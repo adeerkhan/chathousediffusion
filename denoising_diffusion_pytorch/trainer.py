@@ -20,6 +20,8 @@ from denoising_diffusion_pytorch.version import __version__
 from .utils import exists, cycle, has_int_squareroot, divisible_by
 from .dataset import Dataset
 
+from pyinstrument import Profiler
+
 
 # trainer class
 
@@ -116,7 +118,7 @@ class Trainer(object):
             batch_size=train_batch_size,
             shuffle=True,
             pin_memory=True,
-            num_workers=4,
+            num_workers=8,
         )
 
         val_dl = DataLoader(
@@ -240,9 +242,10 @@ class Trainer(object):
             disable=not accelerator.is_main_process,
             position=0,
         ) as pbar:
-
+            
             while self.step < self.train_num_steps:
-
+                # profiler = Profiler()
+                # profiler.start()
                 total_loss = 0.0
 
                 for _ in range(self.gradient_accumulate_every):
@@ -250,7 +253,7 @@ class Trainer(object):
                     img, feature = img.to(device), feature.to(device)
 
                     with self.accelerator.autocast():
-                        loss = self.model(img, feature)
+                        loss = self.model(img, feature, text)
                         loss = loss / self.gradient_accumulate_every
                         total_loss += loss.item()
 
@@ -267,6 +270,9 @@ class Trainer(object):
                 accelerator.wait_for_everyone()
 
                 self.step += 1
+
+                # profiler.stop()
+                # profiler.print()
                 if accelerator.is_main_process:
                     self.ema.update()
 
@@ -281,12 +287,16 @@ class Trainer(object):
                             # batches = num_to_groups(self.batch_size, self.batch_size)
                             all_images_list = list(
                                 map(
-                                    lambda n: self.ema.ema_model.sample(batch_size=n, feature=val_feature),
+                                    lambda n: self.ema.ema_model.sample(batch_size=n, feature=val_feature, text=val_text),
                                     [self.batch_size],
                                 )
                             )
 
                         all_images = torch.cat(all_images_list, dim=0)
+
+                        # save val_text
+                        with open(self.results_folder / f"val_text-{milestone}.txt", "w") as f:
+                            f.write("\n".join(val_text))
 
                         utils.save_image(
                             all_images,
@@ -319,5 +329,6 @@ class Trainer(object):
                             self.save(milestone)
 
                 pbar.update(1)
+
 
         accelerator.print("training complete")
