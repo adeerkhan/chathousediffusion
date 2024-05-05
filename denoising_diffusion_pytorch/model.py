@@ -246,10 +246,10 @@ class GaussianDiffusion(nn.Module):
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def model_predictions(
-        self, x, t, x_self_cond=None, clip_x_start=False, rederive_pred_noise=False, feature=None, text=None
+        self, x, t, x_self_cond=None, clip_x_start=False, rederive_pred_noise=False, feature=None, text=None, cond_scale=1
     ):
         text_embed, text_mask = t5_encode_text(text, return_attn_mask=True)
-        model_output = self.model.forward_with_cond_scale(x, t, text_embeds=text_embed, text_mask=text_mask, cond_images=feature_to_mask(feature), cond_scale=5)
+        model_output = self.model.forward_with_cond_scale(x, t, text_embeds=text_embed, text_mask=text_mask, cond_images=feature_to_mask(feature), cond_scale=cond_scale)
         maybe_clip = (
             partial(torch.clamp, min=-1.0, max=1.0) if clip_x_start else identity
         )
@@ -277,8 +277,8 @@ class GaussianDiffusion(nn.Module):
         pred_noise=pred_noise*feature_to_mask(feature)
         return ModelPrediction(pred_noise, x_start)
 
-    def p_mean_variance(self, x, t, x_self_cond=None, clip_denoised=True, feature=None, text=None):
-        preds = self.model_predictions(x, t, x_self_cond, feature=feature, text=text)
+    def p_mean_variance(self, x, t, x_self_cond=None, clip_denoised=True, feature=None, text=None, cond_scale=1):
+        preds = self.model_predictions(x, t, x_self_cond, feature=feature, text=text, cond_scale=cond_scale)
         x_start = preds.pred_x_start
 
         if clip_denoised:
@@ -290,18 +290,18 @@ class GaussianDiffusion(nn.Module):
         return model_mean, posterior_variance, posterior_log_variance, x_start
 
     @torch.inference_mode()
-    def p_sample(self, x, t: int, x_self_cond=None, feature=None, text=None):
+    def p_sample(self, x, t: int, x_self_cond=None, feature=None, text=None, cond_scale=1):
         b, *_, device = *x.shape, self.device
         batched_times = torch.full((b,), t, device=device, dtype=torch.long)
         model_mean, _, model_log_variance, x_start = self.p_mean_variance(
-            x=x, t=batched_times, x_self_cond=x_self_cond, clip_denoised=True, feature=feature
+            x=x, t=batched_times, x_self_cond=x_self_cond, clip_denoised=True, feature=feature, text=text, cond_scale=cond_scale
         )
         noise = torch.randn_like(x) if t > 0 else 0.0  # no noise if t == 0
         pred_img = (model_mean + (0.5 * model_log_variance).exp() * noise)*feature_to_mask(feature)
         return pred_img, x_start
 
     @torch.inference_mode()
-    def p_sample_loop(self, shape, return_all_timesteps=False, feature=None, text=None):
+    def p_sample_loop(self, shape, return_all_timesteps=False, feature=None, text=None, cond_scale=1):
         batch, device = shape[0], self.device
 
         img = torch.randn(shape, device=device)*feature_to_mask(feature)
@@ -315,7 +315,7 @@ class GaussianDiffusion(nn.Module):
             total=self.num_timesteps,
         ):
             self_cond = x_start if self.self_condition else None
-            img, x_start = self.p_sample(img, t, self_cond, feature, text)
+            img, x_start = self.p_sample(img, t, self_cond, feature, text, cond_scale=cond_scale)
             imgs.append(img)
 
         ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
@@ -324,7 +324,7 @@ class GaussianDiffusion(nn.Module):
         return ret
 
     @torch.inference_mode()
-    def ddim_sample(self, shape, return_all_timesteps=False, feature=None, text=None):
+    def ddim_sample(self, shape, return_all_timesteps=False, feature=None, text=None, cond_scale=1):
         batch, device, total_timesteps, sampling_timesteps, eta, objective = (
             shape[0],
             self.device,
@@ -351,7 +351,7 @@ class GaussianDiffusion(nn.Module):
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
             pred_noise, x_start, *_ = self.model_predictions(
-                img, time_cond, self_cond, clip_x_start=True, rederive_pred_noise=True, feature=feature, text=text
+                img, time_cond, self_cond, clip_x_start=True, rederive_pred_noise=True, feature=feature, text=text, cond_scale=cond_scale
             )
 
             if time_next < 0:
@@ -378,13 +378,13 @@ class GaussianDiffusion(nn.Module):
         return ret
 
     @torch.inference_mode()
-    def sample(self, batch_size=16, return_all_timesteps=False, feature=None, text=None):
+    def sample(self, batch_size=16, return_all_timesteps=False, feature=None, text=None, cond_scale=1):
         (h, w), channels = self.image_size, self.channels
         sample_fn = (
             self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
         )
         return sample_fn(
-            (batch_size, channels, h, w), return_all_timesteps=return_all_timesteps, feature=feature, text=text
+            (batch_size, channels, h, w), return_all_timesteps=return_all_timesteps, feature=feature, text=text, cond_scale=cond_scale
         )
 
     @torch.inference_mode()

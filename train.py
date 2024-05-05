@@ -1,5 +1,19 @@
 from denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
 import os
+import random
+import torch
+import numpy as np
+
+def seed_torch(seed=1029):
+	random.seed(seed)
+	os.environ['PYTHONHASHSEED'] = str(seed) # 为了禁止hash随机化，使得实验可复现
+	np.random.seed(seed)
+	torch.manual_seed(seed)
+	torch.cuda.manual_seed(seed)
+	torch.cuda.manual_seed_all(seed) # if you are using multi-GPU.
+	torch.backends.cudnn.benchmark = False
+	torch.backends.cudnn.deterministic = True
+
 
 if __name__ == '__main__':
     # model = Unet(
@@ -10,25 +24,26 @@ if __name__ == '__main__':
     #     flash_attn = True
     # )
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+    
+    # model = Unet(
+    #     dim = 32,
+    #     cond_dim = 64,
+    #     dim_mults = (1, 2, 4, 8),
+    #     num_resnet_blocks=3,
+    #     cond_images_channels = 1,
+    #     layer_attns = (False, True, True, True),
+    # )
+    
 
     model = Unet(
         dim = 32,
         cond_dim = 64,
         dim_mults = (1, 2, 4, 8),
-        num_resnet_blocks=3,
         cond_images_channels = 1,
-        layer_attns = (False, True, True, True),
+        layer_attns = (False, False, False, True),
+        layer_cross_attns= (False, False, False, True),
     )
-
-    # model = Unet(
-    #     dim = 32,
-    #     cond_dim = 64,
-    #     dim_mults = (1, 2, 4, 8),
-    #     cond_images_channels = 1,
-    #     layer_attns = (False, False, False, True),
-    #     layer_cross_attns= (False, False, False, True),
-    # )
 
 
     diffusion = GaussianDiffusion(
@@ -51,7 +66,12 @@ if __name__ == '__main__':
         amp = False,                       # turn on mixed precision
         calculate_fid = False,             # whether to calculate fid during training
         save_and_sample_every= 1000,
-        results_folder= './results/text2',
+        results_folder= './results/text1',
+        cond_scale= 3
     )
 
-    trainer.train()
+    # trainer.train()
+    for i in range(1,11):
+        seed_torch()
+        trainer.cond_scale=i
+        trainer.val()

@@ -54,6 +54,7 @@ class Trainer(object):
         max_grad_norm=1.0,
         num_fid_samples=50000,
         save_best_and_latest_only=False,
+        cond_scale=1
     ):
         super().__init__()
 
@@ -186,6 +187,7 @@ class Trainer(object):
             self.best_fid = 1e10  # infinite
 
         self.save_best_and_latest_only = save_best_and_latest_only
+        self.cond_scale = cond_scale
 
     @property
     def device(self):
@@ -287,7 +289,7 @@ class Trainer(object):
                             # batches = num_to_groups(self.batch_size, self.batch_size)
                             all_images_list = list(
                                 map(
-                                    lambda n: self.ema.ema_model.sample(batch_size=n, feature=val_feature, text=val_text),
+                                    lambda n: self.ema.ema_model.sample(batch_size=n, feature=val_feature, text=val_text, cond_scale=self.cond_scale),
                                     [self.batch_size],
                                 )
                             )
@@ -332,3 +334,42 @@ class Trainer(object):
 
 
         accelerator.print("training complete")
+    
+    def val(self):
+        self.load("100")
+        self.ema.copy_params_from_model_to_ema()
+        self.ema.ema_model.eval()
+        with torch.inference_mode():
+            val_img, val_feature, val_text = next(self.val_dl)
+            # batches = num_to_groups(self.batch_size, self.batch_size)
+            all_images_list = list(
+                map(
+                    lambda n: self.ema.ema_model.sample(batch_size=n, feature=val_feature, text=val_text, cond_scale=self.cond_scale),
+                    [self.batch_size],
+                )
+            )
+
+        all_images = torch.cat(all_images_list, dim=0)
+
+        # save val_text
+        with open(self.results_folder / f"val_text_s_{self.cond_scale}.txt", "w") as f:
+            f.write("\n".join(val_text))
+
+        utils.save_image(
+            all_images,
+            str(self.results_folder / f"sample_s_{self.cond_scale}.png"),
+            nrow=int(math.sqrt(self.batch_size)),
+        )
+
+        utils.save_image(
+            val_feature,
+            str(self.results_folder / f"feature_s_{self.cond_scale}.png"),
+            nrow=int(math.sqrt(self.batch_size)),
+        )
+
+        utils.save_image(
+            val_img,
+            str(self.results_folder / f"real_s_{self.cond_scale}.png"),
+            nrow=int(math.sqrt(self.batch_size)),
+        )
+
