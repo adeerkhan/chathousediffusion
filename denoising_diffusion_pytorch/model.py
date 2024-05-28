@@ -77,6 +77,7 @@ class GaussianDiffusion(nn.Module):
         offset_noise_strength=0.0,  # https://www.crosslabs.org/blog/diffusion-with-offset-noise
         min_snr_loss_weight=False,  # https://arxiv.org/abs/2303.09556
         min_snr_gamma=5,
+        cond_drop_prob=0.1
     ):
         super().__init__()
         # assert not (type(self) == GaussianDiffusion and model.channels != model.out_dim)
@@ -89,6 +90,7 @@ class GaussianDiffusion(nn.Module):
 
         self.channels = self.model.out_dim
         self.self_condition = self.model.self_condition
+        self.cond_drop_prob=cond_drop_prob
 
         if isinstance(image_size, int):
             image_size = (image_size, image_size)
@@ -347,7 +349,7 @@ class GaussianDiffusion(nn.Module):
 
         x_start = None
 
-        for time, time_next in tqdm(time_pairs, desc="sampling loop time step",position=0):
+        for time, time_next in tqdm(time_pairs, desc="sampling loop time step"):
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
             pred_noise, x_start, *_ = self.model_predictions(
@@ -449,7 +451,7 @@ class GaussianDiffusion(nn.Module):
 
         # predict and take gradient step
 
-        model_out=self.model(x,t,text_embeds=text_embed,text_mask=text_mask,cond_images=feature_to_mask(feature))
+        model_out=self.model(x,t,text_embeds=text_embed,text_mask=text_mask,cond_images=feature_to_mask(feature), cond_drop_prob=self.cond_drop_prob)
 
         mask = feature_to_mask(feature)
         mask_noise = noise * mask

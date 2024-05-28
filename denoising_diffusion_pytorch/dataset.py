@@ -39,7 +39,7 @@ class Dataset(Dataset):
         self.text_path = next(Path(f"{folder_text}").glob(f"**/*.csv"))
         texts = pd.read_csv(self.text_path)
         self.texts = [p for p in zip(texts["0"], texts["1"])]
-        self.texts.sort(key=lambda x: int(x[0].replace(".png", "").split("/")[-1]))
+        self.texts.sort(key=lambda x: int(x[0].replace(".png", "").replace(".json","").split("/")[-1]))
         assert (
             len(self.image_paths) == len(self.mask_paths) == len(self.texts)
         ), "number of images, masks and texts should be the same"
@@ -75,4 +75,4 @@ class Dataset(Dataset):
             img = T.RandomVerticalFlip(p=1)(img)
             mask = T.RandomVerticalFlip(p=1)(mask)
         text = self.texts[index][1]
-        return img, mask, text
+        return img, mask, text, image_path.stem
