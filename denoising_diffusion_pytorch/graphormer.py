@@ -16,7 +16,7 @@ class Graphormer(nn.Module):
         max_degree=48,
         num_spatial=48,
         multi_hop_max_dist=8,
-        num_encoder_layers=6,
+        num_encoder_layers=2,
         embedding_dim=64,
         ffn_embedding_dim=64,
         num_attention_heads=8,
@@ -29,8 +29,11 @@ class Graphormer(nn.Module):
         self.embedding_dim = embedding_dim
         self.num_heads = num_attention_heads
 
-
         self.atom_encoder = nn.Linear(in_feature, embedding_dim)
+        self.atom_encoder = nn.Sequential(
+            nn.Linear(in_feature, int(embedding_dim / 16)),
+            nn.Linear(int(embedding_dim / 16), embedding_dim),
+        )
         # self.atom_encoder = nn.Embedding(num_atoms, embedding_dim, padding_idx=0)
         self.graph_token = nn.Embedding(1, embedding_dim)
 

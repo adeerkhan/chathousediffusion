@@ -324,6 +324,10 @@ class Trainer(object):
                                     batch_size = val_img.shape[0]
                                 else:
                                     batch_size = self.batch_size
+                                val_imgs.append(val_img)
+                                val_texts.append(val_text)
+                                val_features.append(val_feature)
+                                idxs.append(idx)
                                 if self.use_graphormer:
                                     val_text = None
                                 else:
@@ -336,10 +340,6 @@ class Trainer(object):
                                     cond_scale=self.cond_scale,
                                 )
                                 all_images_list.append(images)
-                                val_imgs.append(val_img)
-                                val_texts.append(val_text)
-                                val_features.append(val_feature)
-                                idxs.append(idx)
 
                         if not os.path.exists(
                             self.results_folder / f"step-{milestone}"
@@ -434,6 +434,10 @@ class Trainer(object):
                     batch_size = val_img.shape[0]
                 else:
                     batch_size = self.batch_size
+                val_imgs.append(val_img)
+                val_texts.append(val_text)
+                val_features.append(val_feature)
+                idxs.append(idx)
                 if self.use_graphormer:
                     val_text = None
                 else:
@@ -446,10 +450,7 @@ class Trainer(object):
                     cond_scale=self.cond_scale,
                 )
                 all_images_list.append(images)
-                val_imgs.append(val_img)
-                val_texts.append(val_text)
-                val_features.append(val_feature)
-                idxs.append(idx)
+                
         if not os.path.exists(self.results_folder / f"cond_scale-{self.cond_scale}"):
             os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}")
         micro_iou_list = []

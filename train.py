@@ -25,7 +25,7 @@ if __name__ == "__main__":
     #     flash_attn = True
     # )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     model = Unet(
         dim=32,
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         calculate_fid=False,  # whether to calculate fid during training
         save_and_sample_every=1000,
         augment_flip=False,
-        results_folder="./results/text7",
+        results_folder="./results/text8",
         cond_scale=1,
     )
 
