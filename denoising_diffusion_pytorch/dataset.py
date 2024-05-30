@@ -4,11 +4,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from PIL import Image
+import torch
 from torch import nn
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
 from .utils import convert_image_to_fn, exists
+from .graph_encoder import collate, get_nodes, get_dgl
 
 # dataset classes
 
@@ -23,11 +25,13 @@ class Dataset(Dataset):
         exts=["jpg", "jpeg", "png", "tiff"],
         augment_flip=False,
         convert_image_to=None,
+        mask=0,
     ):
         super().__init__()
         # self.folder = folder
         self.image_size = image_size
         self.augment_flip = augment_flip
+        self.mask = mask
         self.image_paths = [
             p for ext in exts for p in Path(f"{folder_image}").glob(f"**/*.{ext}")
         ]
@@ -39,7 +43,11 @@ class Dataset(Dataset):
         self.text_path = next(Path(f"{folder_text}").glob(f"**/*.csv"))
         texts = pd.read_csv(self.text_path)
         self.texts = [p for p in zip(texts["0"], texts["1"])]
-        self.texts.sort(key=lambda x: int(x[0].replace(".png", "").replace(".json","").split("/")[-1]))
+        self.texts.sort(
+            key=lambda x: int(
+                x[0].replace(".png", "").replace(".json", "").split("/")[-1]
+            )
+        )
         assert (
             len(self.image_paths) == len(self.mask_paths) == len(self.texts)
         ), "number of images, masks and texts should be the same"
@@ -75,4 +83,24 @@ class Dataset(Dataset):
             img = T.RandomVerticalFlip(p=1)(img)
             mask = T.RandomVerticalFlip(p=1)(mask)
         text = self.texts[index][1]
-        return img, mask, text, image_path.stem
+        nodes = get_nodes(text)
+        graph = get_dgl(nodes, mask=self.mask)
+        return img, mask, text, graph, image_path.stem
+
+
+def collate_fn(data):
+    img = torch.stack([i[0] for i in data])
+    mask = torch.stack([i[1] for i in data])
+    text = [i[2] for i in data]
+    graphs = [i[3] for i in data]
+    attn_mask, node_feat, in_degree, out_degree, path_data, dist = collate(graphs)
+    image_path_stem = [i[4] for i in data]
+    graphormer_dict = {
+        "attn_mask": attn_mask,
+        "node_feat": node_feat,
+        "in_degree": in_degree,
+        "out_degree": out_degree,
+        "path_data": path_data,
+        "dist": dist,
+    }
+    return img, mask, text, graphormer_dict, image_path_stem

@@ -8,11 +8,19 @@ from functools import partial
 from einops import rearrange, reduce
 from torch.cuda.amp import autocast
 
-from .utils import default, feature_to_mask, identity, normalize_to_neg_one_to_one, unnormalize_to_zero_to_one, ModelPrediction
+from .utils import (
+    default,
+    feature_to_mask,
+    identity,
+    normalize_to_neg_one_to_one,
+    unnormalize_to_zero_to_one,
+    ModelPrediction,
+)
 from .t5 import t5_encode_text
 from .imagenunet import Unet
 
 # gaussian diffusion trainer class
+
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
@@ -77,7 +85,7 @@ class GaussianDiffusion(nn.Module):
         offset_noise_strength=0.0,  # https://www.crosslabs.org/blog/diffusion-with-offset-noise
         min_snr_loss_weight=False,  # https://arxiv.org/abs/2303.09556
         min_snr_gamma=5,
-        cond_drop_prob=0.1
+        cond_drop_prob=0.1,
     ):
         super().__init__()
         # assert not (type(self) == GaussianDiffusion and model.channels != model.out_dim)
@@ -90,7 +98,7 @@ class GaussianDiffusion(nn.Module):
 
         self.channels = self.model.out_dim
         self.self_condition = self.model.self_condition
-        self.cond_drop_prob=cond_drop_prob
+        self.cond_drop_prob = cond_drop_prob
 
         if isinstance(image_size, int):
             image_size = (image_size, image_size)
@@ -248,10 +256,31 @@ class GaussianDiffusion(nn.Module):
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def model_predictions(
-        self, x, t, x_self_cond=None, clip_x_start=False, rederive_pred_noise=False, feature=None, text=None, cond_scale=1
+        self,
+        x,
+        t,
+        x_self_cond=None,
+        clip_x_start=False,
+        rederive_pred_noise=False,
+        feature=None,
+        text=None,
+        graphormer_dict=None,
+        cond_scale=1,
     ):
-        text_embed, text_mask = t5_encode_text(text, return_attn_mask=True)
-        model_output = self.model.forward_with_cond_scale(x, t, text_embeds=text_embed, text_mask=text_mask, cond_images=feature_to_mask(feature), cond_scale=cond_scale)
+        if text is not None:
+            text_embed, text_mask = t5_encode_text(text, return_attn_mask=True)
+        else:
+            text_embed = None
+            text_mask = None
+        model_output = self.model.forward_with_cond_scale(
+            x,
+            t,
+            text_embeds=text_embed,
+            text_mask=text_mask,
+            cond_images=feature_to_mask(feature),
+            graphormer_dict=graphormer_dict,
+            cond_scale=cond_scale,
+        )
         maybe_clip = (
             partial(torch.clamp, min=-1.0, max=1.0) if clip_x_start else identity
         )
@@ -274,13 +303,31 @@ class GaussianDiffusion(nn.Module):
             x_start = self.predict_start_from_v(x, t, v)
             x_start = maybe_clip(x_start)
             pred_noise = self.predict_noise_from_start(x, t, x_start)
-        
-        x_start=x_start*feature_to_mask(feature)
-        pred_noise=pred_noise*feature_to_mask(feature)
+
+        x_start = x_start * feature_to_mask(feature)
+        pred_noise = pred_noise * feature_to_mask(feature)
         return ModelPrediction(pred_noise, x_start)
 
-    def p_mean_variance(self, x, t, x_self_cond=None, clip_denoised=True, feature=None, text=None, cond_scale=1):
-        preds = self.model_predictions(x, t, x_self_cond, feature=feature, text=text, cond_scale=cond_scale)
+    def p_mean_variance(
+        self,
+        x,
+        t,
+        x_self_cond=None,
+        clip_denoised=True,
+        feature=None,
+        text=None,
+        graphormer_dict=None,
+        cond_scale=1,
+    ):
+        preds = self.model_predictions(
+            x,
+            t,
+            x_self_cond,
+            feature=feature,
+            text=text,
+            graphormer_dict=graphormer_dict,
+            cond_scale=cond_scale,
+        )
         x_start = preds.pred_x_start
 
         if clip_denoised:
@@ -292,21 +339,47 @@ class GaussianDiffusion(nn.Module):
         return model_mean, posterior_variance, posterior_log_variance, x_start
 
     @torch.inference_mode()
-    def p_sample(self, x, t: int, x_self_cond=None, feature=None, text=None, cond_scale=1):
+    def p_sample(
+        self,
+        x,
+        t: int,
+        x_self_cond=None,
+        feature=None,
+        text=None,
+        graphormer_dict=None,
+        cond_scale=1,
+    ):
         b, *_, device = *x.shape, self.device
         batched_times = torch.full((b,), t, device=device, dtype=torch.long)
         model_mean, _, model_log_variance, x_start = self.p_mean_variance(
-            x=x, t=batched_times, x_self_cond=x_self_cond, clip_denoised=True, feature=feature, text=text, cond_scale=cond_scale
+            x=x,
+            t=batched_times,
+            x_self_cond=x_self_cond,
+            clip_denoised=True,
+            feature=feature,
+            text=text,
+            graphormer_dict=graphormer_dict,
+            cond_scale=cond_scale,
         )
         noise = torch.randn_like(x) if t > 0 else 0.0  # no noise if t == 0
-        pred_img = (model_mean + (0.5 * model_log_variance).exp() * noise)*feature_to_mask(feature)
+        pred_img = (
+            model_mean + (0.5 * model_log_variance).exp() * noise
+        ) * feature_to_mask(feature)
         return pred_img, x_start
 
     @torch.inference_mode()
-    def p_sample_loop(self, shape, return_all_timesteps=False, feature=None, text=None, cond_scale=1):
+    def p_sample_loop(
+        self,
+        shape,
+        return_all_timesteps=False,
+        feature=None,
+        text=None,
+        graphormer_dict=None,
+        cond_scale=1,
+    ):
         batch, device = shape[0], self.device
 
-        img = torch.randn(shape, device=device)*feature_to_mask(feature)
+        img = torch.randn(shape, device=device) * feature_to_mask(feature)
         imgs = [img]
 
         x_start = None
@@ -317,16 +390,32 @@ class GaussianDiffusion(nn.Module):
             total=self.num_timesteps,
         ):
             self_cond = x_start if self.self_condition else None
-            img, x_start = self.p_sample(img, t, self_cond, feature, text, cond_scale=cond_scale)
+            img, x_start = self.p_sample(
+                img,
+                t,
+                self_cond,
+                feature,
+                text,
+                graphormer_dict=graphormer_dict,
+                cond_scale=cond_scale,
+            )
             imgs.append(img)
 
         ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
-        ret= torch.where(ret==0,-1,ret)
+        ret = torch.where(ret == 0, -1, ret)
         ret = self.unnormalize(ret)
         return ret
 
     @torch.inference_mode()
-    def ddim_sample(self, shape, return_all_timesteps=False, feature=None, text=None, cond_scale=1):
+    def ddim_sample(
+        self,
+        shape,
+        return_all_timesteps=False,
+        feature=None,
+        text=None,
+        graphormer_dict=None,
+        cond_scale=1,
+    ):
         batch, device, total_timesteps, sampling_timesteps, eta, objective = (
             shape[0],
             self.device,
@@ -344,7 +433,7 @@ class GaussianDiffusion(nn.Module):
             zip(times[:-1], times[1:])
         )  # [(T-1, T-2), (T-2, T-3), ..., (1, 0), (0, -1)]
 
-        img = torch.randn(shape, device=device)*feature_to_mask(feature)
+        img = torch.randn(shape, device=device) * feature_to_mask(feature)
         imgs = [img]
 
         x_start = None
@@ -353,7 +442,15 @@ class GaussianDiffusion(nn.Module):
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
             pred_noise, x_start, *_ = self.model_predictions(
-                img, time_cond, self_cond, clip_x_start=True, rederive_pred_noise=True, feature=feature, text=text, cond_scale=cond_scale
+                img,
+                time_cond,
+                self_cond,
+                clip_x_start=True,
+                rederive_pred_noise=True,
+                feature=feature,
+                text=text,
+                graphormer_dict=graphormer_dict,
+                cond_scale=cond_scale,
             )
 
             if time_next < 0:
@@ -371,22 +468,37 @@ class GaussianDiffusion(nn.Module):
 
             noise = torch.randn_like(img)
 
-            img = (x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise)*feature_to_mask(feature)
+            img = (
+                x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
+            ) * feature_to_mask(feature)
             imgs.append(img)
 
         ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
-        ret= torch.where(ret==0,-1,ret)
+        ret = torch.where(ret == 0, -1, ret)
         ret = self.unnormalize(ret)
         return ret
 
     @torch.inference_mode()
-    def sample(self, batch_size=16, return_all_timesteps=False, feature=None, text=None, cond_scale=1):
+    def sample(
+        self,
+        batch_size=16,
+        return_all_timesteps=False,
+        feature=None,
+        text=None,
+        graphormer_dict=None,
+        cond_scale=1,
+    ):
         (h, w), channels = self.image_size, self.channels
         sample_fn = (
             self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
         )
         return sample_fn(
-            (batch_size, channels, h, w), return_all_timesteps=return_all_timesteps, feature=feature, text=text, cond_scale=cond_scale
+            (batch_size, channels, h, w),
+            return_all_timesteps=return_all_timesteps,
+            feature=feature,
+            text=text,
+            graphormer_dict=graphormer_dict,
+            cond_scale=cond_scale,
         )
 
     @torch.inference_mode()
@@ -420,7 +532,17 @@ class GaussianDiffusion(nn.Module):
             + extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
         )
 
-    def p_losses(self, x_start, feature, t, text_embed, text_mask, noise=None, offset_noise_strength=None):
+    def p_losses(
+        self,
+        x_start,
+        feature,
+        t,
+        text_embed,
+        text_mask,
+        graphormer_dict=None,
+        noise=None,
+        offset_noise_strength=None,
+    ):
         b, c, h, w = x_start.shape
 
         noise = default(noise, lambda: torch.randn_like(x_start))
@@ -437,7 +559,7 @@ class GaussianDiffusion(nn.Module):
 
         # noise sample
 
-        x = self.q_sample(x_start=x_start, t=t, noise=noise)*feature_to_mask(feature)
+        x = self.q_sample(x_start=x_start, t=t, noise=noise) * feature_to_mask(feature)
 
         # if doing self-conditioning, 50% of the time, predict x_start from current set of times
         # and condition with unet with that
@@ -451,7 +573,15 @@ class GaussianDiffusion(nn.Module):
 
         # predict and take gradient step
 
-        model_out=self.model(x,t,text_embeds=text_embed,text_mask=text_mask,cond_images=feature_to_mask(feature), cond_drop_prob=self.cond_drop_prob)
+        model_out = self.model(
+            x,
+            t,
+            text_embeds=text_embed,
+            text_mask=text_mask,
+            graphormer_dict=graphormer_dict,
+            cond_images=feature_to_mask(feature),
+            cond_drop_prob=self.cond_drop_prob,
+        )
 
         mask = feature_to_mask(feature)
         mask_noise = noise * mask
@@ -472,7 +602,7 @@ class GaussianDiffusion(nn.Module):
         loss = loss * extract(self.loss_weight, t, loss.shape)
         return loss.mean()
 
-    def forward(self, img, feature, text, *args, **kwargs):
+    def forward(self, img, feature, text, graphormer_dict, *args, **kwargs):
         (
             b,
             c,
@@ -495,6 +625,10 @@ class GaussianDiffusion(nn.Module):
             feature = self.normalize(feature)
         if text is not None:
             text_embed, text_mask = t5_encode_text(text, return_attn_mask=True)
-            
-        return self.p_losses(img, feature, t, text_embed, text_mask, *args, **kwargs)
+        else:
+            text_embed = None
+            text_mask = None
 
+        return self.p_losses(
+            img, feature, t, text_embed, text_mask, graphormer_dict, *args, **kwargs
+        )

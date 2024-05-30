@@ -67,7 +67,7 @@ if __name__ == "__main__":
         calculate_fid=False,  # whether to calculate fid during training
         save_and_sample_every=1000,
         augment_flip=False,
-        results_folder="./results/text6",
+        results_folder="./results/text7",
         cond_scale=1,
     )
 

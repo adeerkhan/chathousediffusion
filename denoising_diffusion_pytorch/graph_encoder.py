@@ -1,0 +1,279 @@
+import dgl
+from dgl import DGLGraph, shortest_dist
+from .graphormer import Graphormer
+import pandas as pd
+import json
+import torch
+import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
+import random
+
+MAX_ROOMS_PER_TYPE = 4
+
+
+room_category = {
+    "Unknown": [0],
+    "LivingRoom": [1],
+    "MasterRoom": [2],
+    "Kitchen": [3],
+    "Bathroom": [4],
+    "DiningRoom": [5],
+    "ChildRoom": [6],
+    "StudyRoom": [7],
+    "SecondRoom": [8],
+    "GuestRoom": [9],
+    "Balcony": [10],
+    "Entrance": [11],
+    "Storage": [12],
+}
+
+room_location = {
+    "north": [0, 1, 0],
+    "northwest": [-1, 1, 0],
+    "west": [-1, 0, 0],
+    "southwest": [-1, -1, 0],
+    "south": [0, -1, 0],
+    "southeast": [1, -1, 0],
+    "east": [1, 0, 0],
+    "northeast": [1, 1, 0],
+    "center": [0, 0, 0],
+    "Unknown": [0, 0, 1],
+}
+
+room_size = {
+    "Unknown": [0, 1],
+    "XS": [-2, 0],
+    "S": [-1, 0],
+    "M": [0, 0],
+    "L": [1, 0],
+    "XL": [2, 0],
+}
+
+
+class Node:
+    ID = 0
+
+    def __init__(
+        self,
+        name="Unknown",
+        link=[],
+        location="Unknown",
+        size="Unknown",
+        category="Unknown",
+    ):
+        self.name = name
+        self.link = link
+        self.link_ids = []
+        self.location = location
+        self.size = size
+        self.category = category
+        self.index = int(name.replace(category, "")) if category != "Unknown" else -1
+        self.id = Node.ID
+        Node.ID += 1
+
+    def __str__(self):
+        if hasattr(self, "name"):
+            return self.name
+        else:
+            return "?"
+
+    def __repr__(self):
+        if hasattr(self, "name"):
+            return self.name
+        else:
+            return "?"
+
+
+def get_nodes(text):
+    info = json.loads(text)
+    name2node = {}
+    node_list = []
+    Node.ID = 0
+    for key, value in info.items():
+        # number=value.get("num")
+        number = len(value.get("rooms"))
+        for room in value.get("rooms"):
+            name = room.get("name", "Unknown")
+            link = room.get("link", [])
+            location = room.get("location", "Unknown")
+            size = room.get("size", "Unknown")
+            category = key
+            node = Node(name, link, location, size, category)
+            node_list.append(node)
+            name2node[name] = node
+        for _ in range(MAX_ROOMS_PER_TYPE - number):
+            node_list.append(Node())
+    for node in node_list:
+        new_link_ids = []
+        for name in node.link:
+            if name2node.get(name):
+                new_link_ids.append(name2node[name].id)
+        node.link_ids = list(set(node.link_ids + new_link_ids))
+        for n2 in node.link_ids:
+            node_list[n2].link_ids = list(set(node_list[n2].link_ids + [node.id]))
+    return node_list
+
+
+def get_dgl(node_list, mask=0):
+    dgl_graph: DGLGraph = dgl.graph([])
+    for node in node_list:
+        dgl_graph.add_nodes(
+            1,
+            {
+                "category": torch.tensor(
+                    (
+                        [room_category[node.category]]
+                        if random.random() >= mask
+                        else [[0]]
+                    ),
+                    dtype=torch.float,
+                ),
+                "location": torch.tensor(
+                    (
+                        [room_location[node.location]]
+                        if random.random() >= mask
+                        else [[0, 0, 1]]
+                    ),
+                    dtype=torch.float,
+                ),
+                "size": torch.tensor(
+                    [room_size[node.size]] if random.random() >= mask else [[0, 1]],
+                    dtype=torch.float,
+                ),
+            },
+        )
+    for node in node_list:
+        for j in node.link_ids:
+            dgl_graph.add_edges(node.id, j)
+    for node in node_list:
+        for j in node.link_ids:
+            if node.id < j and random.random() < mask:
+                dgl_graph.remove_edges(dgl_graph.edge_ids(node.id, j))
+                dgl_graph.remove_edges(dgl_graph.edge_ids(j, node.id))
+    return dgl_graph
+
+
+# def info_of_graphormer(dgl_graph: DGLGraph, multi_hop_max_dist=8):
+#     node_feat = torch.cat(
+#         [
+#             dgl_graph.ndata["category"],
+#             dgl_graph.ndata["location"],
+#             dgl_graph.ndata["size"],
+#         ],
+#         dim=-1,
+#     )
+#     in_degree = dgl_graph.in_degrees()
+#     out_degree = dgl_graph.out_degrees()
+#     dist, path = shortest_dist(dgl_graph, return_paths=True)
+#     edata = torch.cat(
+#         [torch.ones((dgl_graph.num_edges(), 1)), torch.zeros(1, 1)], dim=0
+#     )
+#     path_data = edata[path[:, :, :multi_hop_max_dist]]
+#     path_data=pad(path_data,(0,0,0,multi_hop_max_dist-path.shape[-1]))
+#     return node_feat, in_degree, out_degree, dist, path_data
+
+
+def collate(graphs, multi_hop_max_dist=8, max_degree=48):
+    # To match Graphormer's input style, all graph features should be
+    # padded to the same size. Keep in mind that different graphs may
+    # have varying feature sizes since they have different number of
+    # nodes, so they will be aligned with the graph having the maximum
+    # number of nodes.
+
+    num_graphs = len(graphs)
+    num_nodes = [g.num_nodes() for g in graphs]
+    max_num_nodes = max(num_nodes)
+
+    # Graphormer adds a virual node to the graph, which is connected to
+    # all other nodes and supposed to represent the graph embedding. So
+    # here +1 is for the virtual node.
+    attn_mask = torch.zeros(num_graphs, max_num_nodes + 1, max_num_nodes + 1)
+    node_feat = []
+    in_degree, out_degree = [], []
+    path_data = []
+    # Since shortest_dist returns -1 for unreachable node pairs and padded
+    # nodes are unreachable to others, distance relevant to padded nodes
+    # use -1 padding as well.
+    dist = -torch.ones((num_graphs, max_num_nodes, max_num_nodes), dtype=torch.long)
+
+    for i in range(num_graphs):
+        # A binary mask where invalid positions are indicated by True.
+        attn_mask[i, :, num_nodes[i] + 1 :] = 1
+
+        # +1 to distinguish padded non-existing nodes from real nodes
+
+        node_feat_i = torch.cat(
+            [
+                graphs[i].ndata["category"],
+                graphs[i].ndata["location"],
+                graphs[i].ndata["size"],
+            ],
+            dim=-1,
+        )
+        node_feat.append(node_feat_i)
+
+        in_degree.append(torch.clamp(graphs[i].in_degrees() + 1, min=0, max=max_degree))
+        out_degree.append(
+            torch.clamp(graphs[i].out_degrees() + 1, min=0, max=max_degree)
+        )
+
+        # Path padding to make all paths to the same length "max_len".
+        dist_i, path = shortest_dist(graphs[i], return_paths=True)
+        path_len = path.size(dim=2)
+        # shape of shortest_path: [n, n, max_len]
+        if path_len >= multi_hop_max_dist:
+            shortest_path = path[:, :, :multi_hop_max_dist]
+        else:
+            p1d = (0, multi_hop_max_dist - path_len)
+            # Use the same -1 padding as shortest_dist for
+            # invalid edge IDs.
+            shortest_path = F.pad(path, p1d, "constant", -1)
+        pad_num_nodes = max_num_nodes - num_nodes[i]
+        p3d = (0, 0, 0, pad_num_nodes, 0, pad_num_nodes)
+        shortest_path = F.pad(shortest_path, p3d, "constant", -1)
+        # shortest_dist pads non-existing edges (at the end of shortest
+        # paths) with edge IDs -1, and th.zeros(1, edata.shape[1]) stands
+        # for all padded edge features.
+        edata = torch.cat(
+            [torch.ones((graphs[i].num_edges(), 1)), torch.zeros(1, 1)], dim=0
+        )
+        path_data.append(edata[shortest_path])
+
+        dist[i, : num_nodes[i], : num_nodes[i]] = dist_i
+
+    # node feat padding
+    node_feat = pad_sequence(node_feat, batch_first=True)
+
+    # degree padding
+    in_degree = pad_sequence(in_degree, batch_first=True)
+    out_degree = pad_sequence(out_degree, batch_first=True)
+
+    return (
+        attn_mask,
+        node_feat,
+        in_degree,
+        out_degree,
+        torch.stack(path_data),
+        dist,
+    )
+
+
+if __name__ == "__main__":
+    text_path = "./data/new/text/json2.csv"
+    texts = pd.read_csv(text_path)
+    texts = [p for p in zip(texts["0"], texts["1"])]
+    texts.sort(
+        key=lambda x: int(x[0].replace(".png", "").replace(".json", "").split("/")[-1])
+    )
+    graphs = []
+    for i in range(10):
+        text = texts[i][1]
+        nodes = get_nodes(text)
+        graph = get_dgl(nodes)
+        graphs.append(graph)
+
+    attn_mask, node_feat, in_degree, out_degree, path_data, dist = collate(graphs)
+
+    graphormer = Graphormer()
+    a = graphormer.forward(node_feat, in_degree, out_degree, path_data, dist, attn_mask)
+    print(nodes)

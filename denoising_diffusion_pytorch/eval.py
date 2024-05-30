@@ -2,7 +2,6 @@ import numpy as np
 
 from .image_process import cmap
 import torch
-from PIL import Image
 
 
 def cal_type_iou(img1, img2, type):
