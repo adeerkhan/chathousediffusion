@@ -18,10 +18,10 @@ from .version import __version__
 
 import os
 
-from .utils import exists, cycle, has_int_squareroot, divisible_by, num_to_groups
+from .utils import exists, has_int_squareroot, divisible_by, num_to_groups
 from .dataset import Dataset, collate_fn
 from .eval import cal_iou
-
+from itertools import cycle
 
 # trainer class
 
@@ -55,13 +55,13 @@ class Trainer(object):
         num_fid_samples=50000,
         save_best_and_latest_only=False,
         cond_scale=1,
-        mask=0.2,
+        mask=0.1,
         use_graphormer=True,
     ):
         super().__init__()
 
         # accelerator
-
+            
         self.accelerator = Accelerator(
             split_batches=split_batches,
             mixed_precision=mixed_precision_type if amp else "no",

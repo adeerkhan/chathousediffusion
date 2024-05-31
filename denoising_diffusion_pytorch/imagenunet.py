@@ -889,8 +889,15 @@ class Unet(nn.Module):
         resize_mode="nearest",
         combine_upsample_fmaps=False,  # combine feature maps from all upsample blocks, used in unet squared successfully
         pixel_shuffle_upsample=True,  # may address checkboard artifacts
+        use_t5_feature=True
     ):
         super().__init__()
+        if use_t5_feature:
+            self.graphormer=Graphormer(in_feature=text_embed_dim*3, embedding_dim=cond_dim, ffn_embedding_dim=cond_dim, num_encoder_layers=1)
+            self.graphormerembedded=nn.Linear(cond_dim,cond_dim)
+        else:
+            self.graphormer=Graphormer(num_encoder_layers=1)
+            self.graphormerembedded=nn.Linear(64,cond_dim)
 
         # guide researchers
 
@@ -929,7 +936,7 @@ class Unet(nn.Module):
 
         init_channels += cond_images_channels
 
-        self.graphormer=Graphormer(embedding_dim=cond_dim)
+        
 
         # initial convolution
         self.init_conv = (
@@ -1566,6 +1573,7 @@ class Unet(nn.Module):
 
         if exists(graphormer_dict):
             text_tokens=self.graphormer(**graphormer_dict)
+            text_tokens=self.graphormerembedded(text_tokens)
         # main conditioning tokens (c)
 
         c = (

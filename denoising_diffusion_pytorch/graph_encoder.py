@@ -6,9 +6,13 @@ import json
 import torch
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
+from .t5 import t5_encode_text
 import random
+import pickle
+import os
+import numpy as np
 
-MAX_ROOMS_PER_TYPE = 4
+# MAX_ROOMS_PER_TYPE = 4
 
 
 room_category = {
@@ -26,7 +30,6 @@ room_category = {
     "Entrance": [11],
     "Storage": [12],
 }
-
 room_location = {
     "north": [0, 1, 0],
     "northwest": [-1, 1, 0],
@@ -39,7 +42,6 @@ room_location = {
     "center": [0, 0, 0],
     "Unknown": [0, 0, 1],
 }
-
 room_size = {
     "Unknown": [0, 1],
     "XS": [-2, 0],
@@ -49,6 +51,37 @@ room_size = {
     "XL": [2, 0],
 }
 
+
+def t5_feature():
+    global room_category
+    global room_location
+    global room_size
+    if not os.path.exists("t5_feature.pkl"):
+        room_category_keys = [k for k in room_category.keys()]
+        room_location_keys = [k for k in room_location.keys()]
+        room_size_keys = [k for k in room_size.keys()]
+        a = t5_encode_text(room_category_keys).sum(dim=1)
+        b = t5_encode_text(room_location_keys).sum(dim=1)
+        c = t5_encode_text(room_size_keys).sum(dim=1)
+        t5_room_category = {
+            key: a[i].cpu().detach().numpy() for i, key in enumerate(room_category_keys)
+        }
+        t5_room_location = {
+            key: b[i].cpu().detach().numpy() for i, key in enumerate(room_location_keys)
+        }
+        t5_room_size = {
+            key: c[i].cpu().detach().numpy() for i, key in enumerate(room_size_keys)
+        }
+        with open("t5_feature.pkl", "wb") as f:
+            pickle.dump([t5_room_category, t5_room_location, t5_room_size], f)
+    else:
+        with open("t5_feature.pkl", "rb") as f:
+            [t5_room_category, t5_room_location, t5_room_size] = pickle.load(f)
+    room_category = t5_room_category
+    room_location = t5_room_location
+    room_size = t5_room_size
+
+t5_feature()
 
 class Node:
     ID = 0
@@ -91,7 +124,7 @@ def get_nodes(text):
     Node.ID = 0
     for key, value in info.items():
         # number=value.get("num")
-        number = len(value.get("rooms"))
+        # number = len(value.get("rooms"))
         for room in value.get("rooms"):
             name = room.get("name", "Unknown")
             link = room.get("link", [])
@@ -101,8 +134,8 @@ def get_nodes(text):
             node = Node(name, link, location, size, category)
             node_list.append(node)
             name2node[name] = node
-        for _ in range(MAX_ROOMS_PER_TYPE - number):
-            node_list.append(Node())
+        # for _ in range(MAX_ROOMS_PER_TYPE - number):
+        #     node_list.append(Node())
     for node in node_list:
         new_link_ids = []
         for name in node.link:
@@ -122,22 +155,26 @@ def get_dgl(node_list, mask=0):
             {
                 "category": torch.tensor(
                     (
-                        [room_category[node.category]]
+                        np.array([room_category[node.category]])
                         if random.random() >= mask
-                        else [[0]]
+                        else np.array([np.zeros_like(room_category[node.category])])
                     ),
                     dtype=torch.float,
                 ),
                 "location": torch.tensor(
                     (
-                        [room_location[node.location]]
+                        np.array([room_location[node.location]])
                         if random.random() >= mask
-                        else [[0, 0, 1]]
+                        else np.array([np.zeros_like(room_location[node.location])])
                     ),
                     dtype=torch.float,
                 ),
                 "size": torch.tensor(
-                    [room_size[node.size]] if random.random() >= mask else [[0, 1]],
+                    (
+                        np.array([room_size[node.size]])
+                        if random.random() >= mask
+                        else np.array([np.zeros_like(room_size[node.size])])
+                    ),
                     dtype=torch.float,
                 ),
             },
@@ -150,6 +187,14 @@ def get_dgl(node_list, mask=0):
             if node.id < j and random.random() < mask:
                 dgl_graph.remove_edges(dgl_graph.edge_ids(node.id, j))
                 dgl_graph.remove_edges(dgl_graph.edge_ids(j, node.id))
+    erase_list = []
+    for i in range(dgl_graph.num_nodes()):
+        if random.random() < mask:
+            erase_list.append(i)
+            # no zero
+            if len(erase_list) == dgl_graph.num_nodes() - 1:
+                break
+    dgl_graph.remove_nodes(erase_list)
     return dgl_graph
 
 
@@ -173,7 +218,7 @@ def get_dgl(node_list, mask=0):
 #     return node_feat, in_degree, out_degree, dist, path_data
 
 
-def collate(graphs, multi_hop_max_dist=8, max_degree=48):
+def collate(graphs, multi_hop_max_dist=4, max_degree=4):
     # To match Graphormer's input style, all graph features should be
     # padded to the same size. Keep in mind that different graphs may
     # have varying feature sizes since they have different number of
@@ -259,7 +304,8 @@ def collate(graphs, multi_hop_max_dist=8, max_degree=48):
 
 
 if __name__ == "__main__":
-    text_path = "./data/new/text/json2.csv"
+    t5_feature()
+    text_path = "../chathousediffusion/data/new/text/json2.csv"
     texts = pd.read_csv(text_path)
     texts = [p for p in zip(texts["0"], texts["1"])]
     texts.sort(
