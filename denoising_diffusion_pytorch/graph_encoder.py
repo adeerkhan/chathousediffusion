@@ -64,14 +64,15 @@ def t5_feature():
         b = t5_encode_text(room_location_keys).sum(dim=1)
         c = t5_encode_text(room_size_keys).sum(dim=1)
         t5_room_category = {
-            key: a[i].cpu().detach().numpy() for i, key in enumerate(room_category_keys)
+            key: a[i].cpu().clone().detach().numpy() for i, key in enumerate(room_category_keys)
         }
         t5_room_location = {
-            key: b[i].cpu().detach().numpy() for i, key in enumerate(room_location_keys)
+            key: b[i].cpu().clone().detach().numpy() for i, key in enumerate(room_location_keys)
         }
         t5_room_size = {
-            key: c[i].cpu().detach().numpy() for i, key in enumerate(room_size_keys)
+            key: c[i].cpu().clone().detach().numpy() for i, key in enumerate(room_size_keys)
         }
+        del a,b,c
         with open("t5_feature.pkl", "wb") as f:
             pickle.dump([t5_room_category, t5_room_location, t5_room_size], f)
     else:

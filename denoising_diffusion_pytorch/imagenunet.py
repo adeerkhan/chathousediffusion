@@ -855,7 +855,7 @@ class Unet(nn.Module):
         learned_sinu_pos_emb_dim=16,
         dim_mults=(1, 2, 4, 8),
         cond_images_channels=0,
-        channels=3,
+        channels=1,
         channels_out=None,
         attn_dim_head=64,
         attn_heads=8,

@@ -1,5 +1,6 @@
 import numpy as np
 from PIL import Image
+import torch
 
 room_label = [(0, 'LivingRoom', 1, "PublicArea",[220, 213, 205]),
               (1, 'MasterRoom', 0, "Bedroom",[138, 113, 91]),
@@ -20,29 +21,48 @@ room_label = [(0, 'LivingRoom', 1, "PublicArea",[220, 213, 205]),
               (16, 'InteriorWall', 0, "InteriorWall",[128,128,128]),
               (17, 'InteriorDoor', 0, "InteriorDoor",[255,255,255])]
 
+# def get_color_map():
+#     color = np.array([
+#         [244,242,229], # living room
+#         [253,244,171], # bedroom
+#         [234,216,214], # kitchen
+#         [205,233,252], # bathroom
+#         [208,216,135], # balcony
+#         [249,222,189], # Storage
+#         [ 79, 79, 79], # exterior wall
+#         [255,225, 25], # FrontDoor
+#         [128,128,128], # interior wall
+#         [255,255,255]
+#     ],dtype=np.int64)
+#     cIdx  = np.array([1,2,3,4,1,2,2,2,2,5,1,6,1,10,7,8,9,10])-1
+#     return color[cIdx]
+# cmap = get_color_map()/255.0
+
 def get_color_map():
     color = np.array([
-        [244,242,229], # living room
-        [253,244,171], # bedroom
-        [234,216,214], # kitchen
-        [205,233,252], # bathroom
-        [208,216,135], # balcony
-        [249,222,189], # Storage
-        [ 79, 79, 79], # exterior wall
-        [255,225, 25], # FrontDoor
-        [128,128,128], # interior wall
+        [238,232,170], # living room 1
+        [255,165,  0], # Master room 2
+        [240,128,128], # kitchen 3
+        [173,216,210], # bathroom 4
+        [107,142, 35], # balcony 5
+        [218,112,214], # dinning room 6
+        [221,160,221], # Storage 7
+        [255,215,  0], # Common room 8
+        [ 0, 0, 0], # exterior wall 9
+        [255,225, 25], # FrontDoor 10
+        [128,128,128], # interior wall 11
         [255,255,255]
     ],dtype=np.int64)
-    cIdx  = np.array([1,2,3,4,1,2,2,2,2,5,1,6,1,10,7,8,9,10])-1
+    cIdx  = np.array([1,2,3,4,6,8,8,8,8,5,1,7,1,12,9,10,12,12])-1
     return color[cIdx]
 cmap = get_color_map()/255.0
 
 def convert_gray_to_rgb(img):
-    img = img.astype(np.int64)
-    rgb = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    img = img.mul(17).to(dtype=torch.int).permute(1,2,0)
+    rgb = torch.zeros((img.shape[0], img.shape[1],3),device=img.device)
     for i in range(18):
-        rgb[img == i] = cmap[i]*255
-    return rgb
+        rgb=torch.where(img==i,torch.tensor(cmap[i],device=img.device).unsqueeze(0).unsqueeze(0),rgb)
+    return rgb.permute(2,0,1)
 
 def load_image(path):
     img = Image.open(path)

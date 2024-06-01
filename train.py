@@ -25,13 +25,14 @@ if __name__ == "__main__":
     #     flash_attn = True
     # )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     model = Unet(
         dim=32,
         cond_dim=512,
         dim_mults=(1, 2, 4, 8),
         num_resnet_blocks=3,
+        channels=1,
         cond_images_channels=1,
         layer_attns=(False, True, True, True),
     )
@@ -55,9 +56,9 @@ if __name__ == "__main__":
 
     trainer = Trainer(
         diffusion,
-        "../chathousediffusion/data/new/image",
-        "../chathousediffusion/data/new/mask",
-        "../chathousediffusion/data/new/text",
+        "../chathousediffusion/data/0531/image",
+        "../chathousediffusion/data/0531/mask",
+        "../chathousediffusion/data/0531/text",
         train_batch_size=32,
         train_lr=8e-5,
         train_num_steps=100000,  # total training steps
@@ -69,6 +70,7 @@ if __name__ == "__main__":
         augment_flip=False,
         results_folder="./results/text10",
         cond_scale=1,
+        convert_image_to="L"
     )
 
     trainer.train()

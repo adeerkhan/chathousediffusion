@@ -22,6 +22,7 @@ from .utils import exists, has_int_squareroot, divisible_by, num_to_groups
 from .dataset import Dataset, collate_fn
 from .eval import cal_iou
 from itertools import cycle
+from .image_process import convert_gray_to_rgb
 
 # trainer class
 
@@ -61,7 +62,7 @@ class Trainer(object):
         super().__init__()
 
         # accelerator
-            
+
         self.accelerator = Accelerator(
             split_batches=split_batches,
             mixed_precision=mixed_precision_type if amp else "no",
@@ -132,7 +133,7 @@ class Trainer(object):
             shuffle=True,
             pin_memory=True,
             num_workers=8,
-            # num_workers=1,
+            # num_workers=0,
             collate_fn=collate_fn,
         )
 
@@ -141,7 +142,7 @@ class Trainer(object):
             batch_size=train_batch_size,
             shuffle=False,
             pin_memory=True,
-            num_workers=1,
+            num_workers=0,
             collate_fn=collate_fn,
         )
 
@@ -274,9 +275,9 @@ class Trainer(object):
                         k: v.to(device) for k, v in graphormer_dict.items()
                     }
                     if self.use_graphormer:
-                        text=None
+                        text = None
                     else:
-                        graphormer_dict=None
+                        graphormer_dict = None
                     with self.accelerator.autocast():
                         loss = self.model(img, feature, text, graphormer_dict)
                         loss = loss / self.gradient_accumulate_every
@@ -353,18 +354,31 @@ class Trainer(object):
                                 if i != len(val_imgs) - 1
                                 else val_imgs[i].shape[0]
                             ):
-                                micro_iou, macro_iou = cal_iou(
-                                    all_images_list[i][j], val_imgs[i][j]
+                                new_image = torch.where(
+                                    val_features[i][j] > 0.5,
+                                    13 / 17,
+                                    all_images_list[i][j],
                                 )
+                                img = convert_gray_to_rgb(new_image)
+                                val_img = convert_gray_to_rgb(val_imgs[i][j])
+                                micro_iou, macro_iou = cal_iou(img, val_img)
                                 # print(f"image{idxs[i][j]}-micro_iou: {micro_iou}, macro_iou: {macro_iou}")
                                 micro_iou_list.append(micro_iou)
                                 macro_iou_list.append(macro_iou)
                                 utils.save_image(
-                                    all_images_list[i][j],
+                                    new_image,
                                     str(
                                         self.results_folder
                                         / f"step-{milestone}"
                                         / f"sample-{idxs[i][j]}.png"
+                                    ),
+                                )
+                                utils.save_image(
+                                    img,
+                                    str(
+                                        self.results_folder
+                                        / f"step-{milestone}"
+                                        / f"rgb_sample-{idxs[i][j]}.png"
                                     ),
                                 )
                                 utils.save_image(
@@ -373,6 +387,14 @@ class Trainer(object):
                                         self.results_folder
                                         / f"step-{milestone}"
                                         / f"real-{idxs[i][j]}.png"
+                                    ),
+                                )
+                                utils.save_image(
+                                    val_img,
+                                    str(
+                                        self.results_folder
+                                        / f"step-{milestone}"
+                                        / f"rgb_real-{idxs[i][j]}.png"
                                     ),
                                 )
                                 with open(
@@ -414,7 +436,7 @@ class Trainer(object):
                             self.save("latest")
                         else:
                             self.save(milestone)
-
+                        torch.cuda.empty_cache()
                 pbar.update(1)
 
         accelerator.print("training complete")
@@ -450,7 +472,7 @@ class Trainer(object):
                     cond_scale=self.cond_scale,
                 )
                 all_images_list.append(images)
-                
+
         if not os.path.exists(self.results_folder / f"cond_scale-{self.cond_scale}"):
             os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}")
         micro_iou_list = []

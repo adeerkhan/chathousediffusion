@@ -13,6 +13,10 @@ from .utils import convert_image_to_fn, exists
 from .graph_encoder import collate, get_nodes, get_dgl
 
 # dataset classes
+def image2tensor(img:Image.Image):
+    img_array=np.array(img)/17
+    img_tensor=torch.tensor(img_array,dtype=torch.float32).unsqueeze(0)
+    return img_tensor
 
 
 class Dataset(Dataset):
@@ -62,7 +66,7 @@ class Dataset(Dataset):
                 T.Lambda(maybe_convert_fn),
                 T.Resize(image_size),
                 T.CenterCrop(image_size),
-                T.ToTensor(),
+                # T.ToTensor(),
             ]
         )
 
@@ -75,7 +79,9 @@ class Dataset(Dataset):
         img = Image.open(image_path)
         mask = Image.open(mask_path)
         img = self.transform(img)
+        img = image2tensor(img)
         mask = self.transform(mask)
+        mask = T.ToTensor()(mask)
         if self.augment_flip and random.random() > 0.5:
             img = T.RandomHorizontalFlip(p=1)(img)
             mask = T.RandomHorizontalFlip(p=1)(mask)

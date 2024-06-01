@@ -24,7 +24,7 @@ def cal_iou(img1, img2):
     intersections=[]
     unions=[]
     ious=[]
-    for i in range(5):
+    for i in range(8):
         intersection, union = cal_type_iou(img1, img2, i)
         if union!=0:
             iou = intersection / union
