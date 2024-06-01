@@ -64,6 +64,13 @@ def convert_gray_to_rgb(img):
         rgb=torch.where(img==i,torch.tensor(cmap[i],device=img.device).unsqueeze(0).unsqueeze(0),rgb)
     return rgb.permute(2,0,1)
 
+def convert_mult_to_rgb(img):
+    img=torch.round(img)
+    rgb = torch.zeros((img.shape[1], img.shape[2],3),device=img.device)
+    for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,14,15,16,17]:
+        rgb=torch.where(img[i].unsqueeze(-1)==1,torch.tensor(cmap[i],device=img.device).unsqueeze(0).unsqueeze(0),rgb)
+    return rgb.permute(2,0,1)
+
 def load_image(path):
     img = Image.open(path)
     img = np.array(img)
@@ -73,3 +80,6 @@ def load_image(path):
     return img
 
 # load_image("data/dataset/output64/0.png")
+if __name__=="__main__":
+    img=torch.randint(0,2,(18,64,64))
+    convert_mult_to_rgb(img)

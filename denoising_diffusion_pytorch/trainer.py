@@ -22,10 +22,9 @@ from .utils import exists, has_int_squareroot, divisible_by, num_to_groups
 from .dataset import Dataset, collate_fn
 from .eval import cal_iou
 from itertools import cycle
-from .image_process import convert_gray_to_rgb
+from .image_process import convert_gray_to_rgb, convert_mult_to_rgb
 
 # trainer class
-
 
 class Trainer(object):
     def __init__(
@@ -58,6 +57,7 @@ class Trainer(object):
         cond_scale=1,
         mask=0.1,
         use_graphormer=True,
+        onehot=True
     ):
         super().__init__()
 
@@ -73,6 +73,7 @@ class Trainer(object):
         self.model = diffusion_model
         self.channels = diffusion_model.channels
         is_ddim_sampling = diffusion_model.is_ddim_sampling
+        self.onehot=onehot
 
         # default convert_image_to depending on channels
 
@@ -108,6 +109,7 @@ class Trainer(object):
             augment_flip=augment_flip,
             convert_image_to=convert_image_to,
             mask=mask,
+            onehot=onehot
         )
 
         self.val_ds = Dataset(
@@ -118,6 +120,7 @@ class Trainer(object):
             augment_flip=augment_flip,
             convert_image_to=convert_image_to,
             mask=0,
+            onehot=onehot
         )
 
         assert (
@@ -132,8 +135,8 @@ class Trainer(object):
             batch_size=train_batch_size,
             shuffle=True,
             pin_memory=True,
-            num_workers=8,
-            # num_workers=0,
+            # num_workers=8,
+            num_workers=0,
             collate_fn=collate_fn,
         )
 
@@ -254,7 +257,7 @@ class Trainer(object):
 
     def train(self):
         accelerator = self.accelerator
-        device = accelerator.device
+        # device = accelerator.device
 
         with tqdm(
             initial=self.step,
@@ -270,10 +273,6 @@ class Trainer(object):
 
                 for _ in range(self.gradient_accumulate_every):
                     img, feature, text, graphormer_dict, _ = next(self.train_dl)
-                    img, feature = img.to(device), feature.to(device)
-                    graphormer_dict = {
-                        k: v.to(device) for k, v in graphormer_dict.items()
-                    }
                     if self.use_graphormer:
                         text = None
                     else:
@@ -354,39 +353,51 @@ class Trainer(object):
                                 if i != len(val_imgs) - 1
                                 else val_imgs[i].shape[0]
                             ):
-                                new_image = torch.where(
-                                    val_features[i][j] > 0.5,
-                                    13 / 17,
-                                    all_images_list[i][j],
-                                )
-                                img = convert_gray_to_rgb(new_image)
-                                val_img = convert_gray_to_rgb(val_imgs[i][j])
+                                if self.onehot:
+                                    new_image = torch.where(
+                                        val_features[i][j] > 0.5,
+                                        0,
+                                        all_images_list[i][j],
+                                    )
+                                    img = convert_mult_to_rgb(new_image)
+                                    val_img= convert_mult_to_rgb(val_imgs[i][j])
+
+                                else:
+                                    new_image = torch.where(
+                                        val_features[i][j] > 0.5,
+                                        13 / 17,
+                                        all_images_list[i][j],
+                                    )
+                                    img = convert_gray_to_rgb(new_image)
+                                    val_img = convert_gray_to_rgb(val_imgs[i][j])
+                                    utils.save_image(
+                                        new_image,
+                                        str(
+                                            self.results_folder
+                                            / f"step-{milestone}"
+                                            / f"sample-{idxs[i][j]}.png"
+                                        ),
+                                    )
+                                    utils.save_image(
+                                        val_imgs[i][j],
+                                        str(
+                                            self.results_folder
+                                            / f"step-{milestone}"
+                                            / f"real-{idxs[i][j]}.png"
+                                        ),
+                                    )
+
                                 micro_iou, macro_iou = cal_iou(img, val_img)
                                 # print(f"image{idxs[i][j]}-micro_iou: {micro_iou}, macro_iou: {macro_iou}")
                                 micro_iou_list.append(micro_iou)
                                 macro_iou_list.append(macro_iou)
-                                utils.save_image(
-                                    new_image,
-                                    str(
-                                        self.results_folder
-                                        / f"step-{milestone}"
-                                        / f"sample-{idxs[i][j]}.png"
-                                    ),
-                                )
+                                
                                 utils.save_image(
                                     img,
                                     str(
                                         self.results_folder
                                         / f"step-{milestone}"
                                         / f"rgb_sample-{idxs[i][j]}.png"
-                                    ),
-                                )
-                                utils.save_image(
-                                    val_imgs[i][j],
-                                    str(
-                                        self.results_folder
-                                        / f"step-{milestone}"
-                                        / f"real-{idxs[i][j]}.png"
                                     ),
                                 )
                                 utils.save_image(
@@ -436,12 +447,14 @@ class Trainer(object):
                             self.save("latest")
                         else:
                             self.save(milestone)
+                        del all_images_list
                         torch.cuda.empty_cache()
                 pbar.update(1)
 
         accelerator.print("training complete")
 
     def val(self):
+        """还没改，先别用"""
         self.load("20")
         self.ema.copy_params_from_model_to_ema()
         self.ema.ema_model.eval()

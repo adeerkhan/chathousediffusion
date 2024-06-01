@@ -18,6 +18,11 @@ def image2tensor(img:Image.Image):
     img_tensor=torch.tensor(img_array,dtype=torch.float32).unsqueeze(0)
     return img_tensor
 
+def image2multitensor(img: Image.Image):
+    img_array = np.array(img)
+    multitensors = (img_array[..., None] == np.arange(18)).astype(np.float32)
+    final_tensor = torch.tensor(multitensors, dtype=torch.float32).permute(2, 0, 1)
+    return final_tensor
 
 class Dataset(Dataset):
     def __init__(
@@ -30,12 +35,14 @@ class Dataset(Dataset):
         augment_flip=False,
         convert_image_to=None,
         mask=0,
+        onehot=True
     ):
         super().__init__()
         # self.folder = folder
         self.image_size = image_size
         self.augment_flip = augment_flip
         self.mask = mask
+        self.onehot=onehot
         self.image_paths = [
             p for ext in exts for p in Path(f"{folder_image}").glob(f"**/*.{ext}")
         ]
@@ -79,7 +86,10 @@ class Dataset(Dataset):
         img = Image.open(image_path)
         mask = Image.open(mask_path)
         img = self.transform(img)
-        img = image2tensor(img)
+        if self.onehot:
+            img=image2multitensor(img)
+        else:
+            img = image2tensor(img)
         mask = self.transform(mask)
         mask = T.ToTensor()(mask)
         if self.augment_flip and random.random() > 0.5:

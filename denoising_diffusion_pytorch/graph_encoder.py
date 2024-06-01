@@ -304,23 +304,23 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
     )
 
 
-if __name__ == "__main__":
-    t5_feature()
-    text_path = "../chathousediffusion/data/new/text/json2.csv"
-    texts = pd.read_csv(text_path)
-    texts = [p for p in zip(texts["0"], texts["1"])]
-    texts.sort(
-        key=lambda x: int(x[0].replace(".png", "").replace(".json", "").split("/")[-1])
-    )
-    graphs = []
-    for i in range(10):
-        text = texts[i][1]
-        nodes = get_nodes(text)
-        graph = get_dgl(nodes)
-        graphs.append(graph)
+# if __name__ == "__main__":
+#     t5_feature()
+#     text_path = "../chathousediffusion/data/new/text/json2.csv"
+#     texts = pd.read_csv(text_path)
+#     texts = [p for p in zip(texts["0"], texts["1"])]
+#     texts.sort(
+#         key=lambda x: int(x[0].replace(".png", "").replace(".json", "").split("/")[-1])
+#     )
+#     graphs = []
+#     for i in range(10):
+#         text = texts[i][1]
+#         nodes = get_nodes(text)
+#         graph = get_dgl(nodes)
+#         graphs.append(graph)
 
-    attn_mask, node_feat, in_degree, out_degree, path_data, dist = collate(graphs)
+#     attn_mask, node_feat, in_degree, out_degree, path_data, dist = collate(graphs)
 
-    graphormer = Graphormer()
-    a = graphormer.forward(node_feat, in_degree, out_degree, path_data, dist, attn_mask)
-    print(nodes)
+#     graphormer = Graphormer()
+#     a = graphormer.forward(node_feat, in_degree, out_degree, path_data, dist, attn_mask)
+#     print(nodes)

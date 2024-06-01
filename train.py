@@ -25,14 +25,20 @@ if __name__ == "__main__":
     #     flash_attn = True
     # )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    onehot=True
+    if onehot:
+        channels=18
+    else:
+        channels=1
+
 
     model = Unet(
-        dim=32,
-        cond_dim=512,
+        dim=16,
+        cond_dim=128,
         dim_mults=(1, 2, 4, 8),
         num_resnet_blocks=3,
-        channels=1,
+        channels=channels,
         cond_images_channels=1,
         layer_attns=(False, True, True, True),
     )
@@ -68,9 +74,10 @@ if __name__ == "__main__":
         calculate_fid=False,  # whether to calculate fid during training
         save_and_sample_every=1000,
         augment_flip=False,
-        results_folder="./results/text10",
+        results_folder="./results/text12",
         cond_scale=1,
-        convert_image_to="L"
+        convert_image_to="L",
+        onehot=onehot
     )
 
     trainer.train()
