@@ -25,7 +25,7 @@ if __name__ == "__main__":
     #     flash_attn = True
     # )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     onehot=False
     if onehot:
         channels=18
@@ -41,6 +41,7 @@ if __name__ == "__main__":
         channels=channels,
         cond_images_channels=1,
         layer_attns=(False, True, True, True),
+        omit_graphormer=True
     )
 
     # model = Unet(
@@ -67,14 +68,14 @@ if __name__ == "__main__":
         "../chathousediffusion/data/0531/text",
         train_batch_size=32,
         train_lr=8e-5,
-        train_num_steps=200000,  # total training steps
+        train_num_steps=500000,  # total training steps
         gradient_accumulate_every=1,  # gradient accumulation steps
         ema_decay=0.995,  # exponential moving average decay
         amp=False,  # turn on mixed precision
         calculate_fid=False,  # whether to calculate fid during training
-        save_and_sample_every=1000,
+        save_and_sample_every=5000,
         augment_flip=False,
-        results_folder="./results/text13",
+        results_folder="./results/text15",
         cond_scale=1,
         convert_image_to="L",
         onehot=onehot

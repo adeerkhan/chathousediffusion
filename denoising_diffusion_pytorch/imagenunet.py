@@ -889,7 +889,8 @@ class Unet(nn.Module):
         resize_mode="nearest",
         combine_upsample_fmaps=False,  # combine feature maps from all upsample blocks, used in unet squared successfully
         pixel_shuffle_upsample=True,  # may address checkboard artifacts
-        use_t5_feature=True
+        use_t5_feature=True,
+        omit_graphormer=False
     ):
         super().__init__()
         if use_t5_feature:
@@ -898,6 +899,9 @@ class Unet(nn.Module):
         else:
             self.graphormer=Graphormer(num_encoder_layers=1)
             self.graphormerembedded=nn.Linear(64,cond_dim)
+        if omit_graphormer:
+            self.graphormerembedded=nn.Linear(in_features=text_embed_dim*3, out_features=cond_dim)
+        self.omit_graphormer=omit_graphormer
 
         # guide researchers
 
@@ -1572,8 +1576,11 @@ class Unet(nn.Module):
             t = t + text_hiddens
 
         if exists(graphormer_dict):
-            text_tokens=self.graphormer(**graphormer_dict)
-            text_tokens=self.graphormerembedded(text_tokens)
+            if self.omit_graphormer:
+                text_tokens=self.graphormerembedded(graphormer_dict.get("node_feat"))
+            else:
+                text_tokens=self.graphormer(**graphormer_dict)
+                text_tokens=self.graphormerembedded(text_tokens)
         # main conditioning tokens (c)
 
         c = (

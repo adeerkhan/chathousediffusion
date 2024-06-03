@@ -95,11 +95,11 @@ class Node:
         size="Unknown",
         category="Unknown",
     ):
-        self.name = name
+        self.name = name if name!="" else "Unknown"
         self.link = link
         self.link_ids = []
-        self.location = location
-        self.size = size
+        self.location = location if location!="" else "Unknown"
+        self.size = size if size!="" else "Unknown"
         self.category = category
         self.index = int(name.replace(category, "")) if category != "Unknown" else -1
         self.id = Node.ID
@@ -156,25 +156,25 @@ def get_dgl(node_list, mask=0):
             {
                 "category": torch.tensor(
                     (
-                        np.array([room_category[node.category]])
+                        np.array([room_category.get(node.category,room_category["Unknown"])])
                         if random.random() >= mask
-                        else np.array([np.zeros_like(room_category[node.category])])
+                        else np.array([np.zeros_like(room_category["Unknown"])])
                     ),
                     dtype=torch.float,
                 ),
                 "location": torch.tensor(
                     (
-                        np.array([room_location[node.location]])
+                        np.array([room_location.get(node.location,room_location["Unknown"])])
                         if random.random() >= mask
-                        else np.array([np.zeros_like(room_location[node.location])])
+                        else np.array([np.zeros_like(room_location["Unknown"])])
                     ),
                     dtype=torch.float,
                 ),
                 "size": torch.tensor(
                     (
-                        np.array([room_size[node.size]])
+                        np.array([room_size.get(node.size,room_size["Unknown"])])
                         if random.random() >= mask
-                        else np.array([np.zeros_like(room_size[node.size])])
+                        else np.array([np.zeros_like(room_size["Unknown"])])
                     ),
                     dtype=torch.float,
                 ),

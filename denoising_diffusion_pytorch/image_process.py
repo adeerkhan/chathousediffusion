@@ -59,6 +59,7 @@ cmap = get_color_map()/255.0
 
 def convert_gray_to_rgb(img):
     img = img.mul(17).to(dtype=torch.int).permute(1,2,0)
+    img=torch.round(img)
     rgb = torch.zeros((img.shape[0], img.shape[1],3),device=img.device)
     for i in range(18):
         rgb=torch.where(img==i,torch.tensor(cmap[i],device=img.device).unsqueeze(0).unsqueeze(0),rgb)
