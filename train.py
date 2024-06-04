@@ -25,7 +25,7 @@ if __name__ == "__main__":
     #     flash_attn = True
     # )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     onehot=False
     if onehot:
         channels=18
@@ -41,7 +41,8 @@ if __name__ == "__main__":
         channels=channels,
         cond_images_channels=1,
         layer_attns=(False, True, True, True),
-        omit_graphormer=True
+        omit_graphormer=False,
+        graphormer_layers=6
     )
 
     # model = Unet(
@@ -71,14 +72,20 @@ if __name__ == "__main__":
         train_num_steps=500000,  # total training steps
         gradient_accumulate_every=1,  # gradient accumulation steps
         ema_decay=0.995,  # exponential moving average decay
-        amp=False,  # turn on mixed precision
         calculate_fid=False,  # whether to calculate fid during training
         save_and_sample_every=5000,
         augment_flip=False,
-        results_folder="./results/text15",
+        results_folder="./results/text18",
         cond_scale=1,
         convert_image_to="L",
-        onehot=onehot
+        mask=0.1,
+        onehot=onehot,
+        train_num_workers=8
     )
 
     trainer.train()
+    # for i in range(5):
+    #     seed_torch()
+    #     trainer.cond_scale=i
+    # trainer.val(load_model=46)
+

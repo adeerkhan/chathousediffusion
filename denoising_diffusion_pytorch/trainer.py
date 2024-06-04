@@ -26,6 +26,7 @@ from .image_process import convert_gray_to_rgb, convert_mult_to_rgb
 
 # trainer class
 
+
 class Trainer(object):
     def __init__(
         self,
@@ -45,9 +46,6 @@ class Trainer(object):
         save_and_sample_every=1000,
         num_samples=25,
         results_folder="./results",
-        amp=False,
-        mixed_precision_type="fp16",
-        split_batches=True,
         convert_image_to=None,
         calculate_fid=True,
         inception_block_idx=2048,
@@ -57,7 +55,8 @@ class Trainer(object):
         cond_scale=1,
         mask=0.1,
         use_graphormer=True,
-        onehot=True
+        onehot=True,
+        train_num_workers=8
     ):
         super().__init__()
 
@@ -66,7 +65,7 @@ class Trainer(object):
         self.model = diffusion_model
         self.channels = diffusion_model.channels
         is_ddim_sampling = diffusion_model.is_ddim_sampling
-        self.onehot=onehot
+        self.onehot = onehot
 
         # default convert_image_to depending on channels
 
@@ -102,7 +101,7 @@ class Trainer(object):
             augment_flip=augment_flip,
             convert_image_to=convert_image_to,
             mask=mask,
-            onehot=onehot
+            onehot=onehot,
         )
 
         self.val_ds = Dataset(
@@ -113,7 +112,7 @@ class Trainer(object):
             augment_flip=augment_flip,
             convert_image_to=convert_image_to,
             mask=0,
-            onehot=onehot
+            onehot=onehot,
         )
 
         assert (
@@ -128,8 +127,8 @@ class Trainer(object):
             batch_size=train_batch_size,
             shuffle=True,
             pin_memory=False,
-            num_workers=8,
-            # num_workers=0,
+            # num_workers=8,
+            num_workers=train_num_workers,
             collate_fn=collate_fn,
         )
 
@@ -152,9 +151,7 @@ class Trainer(object):
 
         # for logging results in a folder periodically
 
-        self.ema = EMA(
-            diffusion_model, beta=ema_decay, update_every=ema_update_every
-        )
+        self.ema = EMA(diffusion_model, beta=ema_decay, update_every=ema_update_every)
         self.ema.to(self.device)
 
         self.results_folder = Path(results_folder)
@@ -163,8 +160,6 @@ class Trainer(object):
         # step counter state
 
         self.step = 0
-
-
 
         # FID-score computation
 
@@ -205,9 +200,7 @@ class Trainer(object):
             "model": self.model.state_dict(),
             "opt": self.opt.state_dict(),
             "ema": self.ema.state_dict(),
-            "scaler": (
-                None
-            ),
+            "scaler": (None),
             "version": __version__,
         }
 
@@ -230,7 +223,6 @@ class Trainer(object):
         if "version" in data:
             print(f"loading from version {data['version']}")
 
-
     def train(self):
 
         with tqdm(
@@ -246,10 +238,10 @@ class Trainer(object):
 
                 for _ in range(self.gradient_accumulate_every):
                     img, feature, text, graphormer_dict, _ = next(self.train_dl)
-                    img=img.to(self.device)
-                    feature=feature.to(self.device)
-                    graphormer_dict={
-                        k:v.to(self.device) for k,v in graphormer_dict.items()
+                    img = img.to(self.device)
+                    feature = feature.to(self.device)
+                    graphormer_dict = {
+                        k: v.to(self.device) for k, v in graphormer_dict.items()
                     }
 
                     if self.use_graphormer:
@@ -264,11 +256,12 @@ class Trainer(object):
 
                 pbar.set_description(f"loss: {total_loss:.4f}")
 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.max_grad_norm
+                )
 
                 self.opt.step()
                 self.opt.zero_grad()
-
 
                 self.step += 1
 
@@ -280,141 +273,8 @@ class Trainer(object):
                     self.step, self.save_and_sample_every
                 ):
                     self.ema.ema_model.eval()
-
-                    with torch.inference_mode():
-                        milestone = self.step // self.save_and_sample_every
-                        all_images_list = []
-                        val_imgs = []
-                        val_texts = []
-                        val_features = []
-                        idxs = []
-                        for (
-                            val_img,
-                            val_feature,
-                            val_text,
-                            val_graphormer_dict,
-                            idx,
-                        ) in self.val_dl:
-                            if val_img.shape[0] != self.batch_size:
-                                batch_size = val_img.shape[0]
-                            else:
-                                batch_size = self.batch_size
-                            val_img=val_img.to(self.device)
-                            val_feature=val_feature.to(self.device)
-                            val_graphormer_dict={
-                                k:v.to(self.device) for k,v in val_graphormer_dict.items()
-                            }
-                            val_imgs.append(val_img)
-                            val_texts.append(val_text)
-                            val_features.append(val_feature)
-                            idxs.append(idx)
-                            if self.use_graphormer:
-                                val_text = None
-                            else:
-                                val_graphormer_dict = None
-                            images = self.ema.ema_model.sample(
-                                batch_size=batch_size,
-                                feature=val_feature,
-                                text=val_text,
-                                graphormer_dict=val_graphormer_dict,
-                                cond_scale=self.cond_scale,
-                            )
-                            all_images_list.append(images)
-
-                    if not os.path.exists(
-                        self.results_folder / f"step-{milestone}"
-                    ):
-                        os.makedirs(self.results_folder / f"step-{milestone}")
-                    micro_iou_list = []
-                    macro_iou_list = []
-                    for i in range(len(val_imgs)):
-                        for j in range(
-                            self.batch_size
-                            if i != len(val_imgs) - 1
-                            else val_imgs[i].shape[0]
-                        ):
-                            if self.onehot:
-                                # new_image = torch.where(
-                                #     val_features[i][j] > 0.5,
-                                #     0,
-                                #     all_images_list[i][j],
-                                # )
-                                img = convert_mult_to_rgb(all_images_list[i][j], val_features[i][j])
-                                val_img= convert_mult_to_rgb(val_imgs[i][j], val_features[i][j])
-
-                            else:
-                                new_image = torch.where(
-                                    val_features[i][j] > 0.5,
-                                    13/17,
-                                    all_images_list[i][j],
-                                )
-                                img = convert_gray_to_rgb(new_image)
-                                val_img = convert_gray_to_rgb(val_imgs[i][j])
-                                utils.save_image(
-                                    new_image,
-                                    str(
-                                        self.results_folder
-                                        / f"step-{milestone}"
-                                        / f"sample-{idxs[i][j]}.png"
-                                    ),
-                                )
-                                utils.save_image(
-                                    val_imgs[i][j],
-                                    str(
-                                        self.results_folder
-                                        / f"step-{milestone}"
-                                        / f"real-{idxs[i][j]}.png"
-                                    ),
-                                )
-
-                            micro_iou, macro_iou = cal_iou(img, val_img)
-                            # print(f"image{idxs[i][j]}-micro_iou: {micro_iou}, macro_iou: {macro_iou}")
-                            micro_iou_list.append(micro_iou)
-                            macro_iou_list.append(macro_iou)
-                            
-                            utils.save_image(
-                                img,
-                                str(
-                                    self.results_folder
-                                    / f"step-{milestone}"
-                                    / f"rgb_sample-{idxs[i][j]}.png"
-                                ),
-                            )
-                            utils.save_image(
-                                val_img,
-                                str(
-                                    self.results_folder
-                                    / f"step-{milestone}"
-                                    / f"rgb_real-{idxs[i][j]}.png"
-                                ),
-                            )
-                            with open(
-                                self.results_folder
-                                / f"step-{milestone}"
-                                / f"val_text-{idxs[i][j]}.txt",
-                                "w",
-                            ) as f:
-                                f.write(val_texts[i][j])
-                            utils.save_image(
-                                val_features[i][j],
-                                str(
-                                    self.results_folder
-                                    / f"step-{milestone}"
-                                    / f"feature-{idxs[i][j]}.png"
-                                ),
-                            )
-                    micro_iou = sum(micro_iou_list) / len(micro_iou_list)
-                    macro_iou = sum(macro_iou_list) / len(macro_iou_list)
-                    print(f"micro_iou: {micro_iou}, macro_iou: {macro_iou}")
-                    with open(
-                        self.results_folder / f"step-{milestone}" / f"iou.txt", "w"
-                    ) as f:
-                        for i in range(len(micro_iou_list)):
-                            f.write(
-                                f"image{idxs[i//self.batch_size][i%self.batch_size]}-micro_iou: {micro_iou_list[i]}, macro_iou: {macro_iou_list[i]}\n"
-                            )
-                        f.write(f"micro_iou: {micro_iou}, macro_iou: {macro_iou}")
-
+                    milestone = self.step // self.save_and_sample_every
+                    self.val(milestone=milestone)
                     # whether to calculate fid
 
                     if self.calculate_fid:
@@ -426,27 +286,48 @@ class Trainer(object):
                         self.save("latest")
                     else:
                         self.save(milestone)
-                    del all_images_list
                     torch.cuda.empty_cache()
                 pbar.update(1)
 
-
-    def val(self):
-        """还没改，先别用"""
-        self.load("20")
-        self.ema.copy_params_from_model_to_ema()
-        self.ema.ema_model.eval()
+    def val(self, milestone=None, load_model=None):
+        if milestone is not None:
+            if not os.path.exists(self.results_folder / f"step-{milestone}"):
+                os.makedirs(self.results_folder / f"step-{milestone}")
+            filepath=f"step-{milestone}"
+        elif load_model is not None:
+            self.load(load_model)
+            self.ema.copy_params_from_model_to_ema()
+            self.ema.ema_model.eval()
+            if not os.path.exists(
+                self.results_folder / f"cond_scale-{self.cond_scale}"
+            ):
+                os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}")
+            filepath=f"cond_scale-{self.cond_scale}"
+        else:
+            print("Error: no model")
+            return 
         with torch.inference_mode():
             all_images_list = []
             val_imgs = []
             val_texts = []
             val_features = []
             idxs = []
-            for val_img, val_feature, val_text, val_graphormer_dict, idx in self.val_dl:
+            for (
+                val_img,
+                val_feature,
+                val_text,
+                val_graphormer_dict,
+                idx,
+            ) in self.val_dl:
                 if val_img.shape[0] != self.batch_size:
                     batch_size = val_img.shape[0]
                 else:
                     batch_size = self.batch_size
+                val_img = val_img.to(self.device)
+                val_feature = val_feature.to(self.device)
+                val_graphormer_dict = {
+                    k: v.to(self.device) for k, v in val_graphormer_dict.items()
+                }
                 val_imgs.append(val_img)
                 val_texts.append(val_text)
                 val_features.append(val_feature)
@@ -464,39 +345,63 @@ class Trainer(object):
                 )
                 all_images_list.append(images)
 
-        if not os.path.exists(self.results_folder / f"cond_scale-{self.cond_scale}"):
-            os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}")
         micro_iou_list = []
         macro_iou_list = []
         for i in range(len(val_imgs)):
             for j in range(
                 self.batch_size if i != len(val_imgs) - 1 else val_imgs[i].shape[0]
             ):
-                micro_iou, macro_iou = cal_iou(all_images_list[i][j], val_imgs[i][j])
-                print(
-                    f"image{idxs[i][j]}-micro_iou: {micro_iou}, macro_iou: {macro_iou}"
-                )
+                if self.onehot:
+                    img = convert_mult_to_rgb(all_images_list[i][j], val_features[i][j])
+                    val_img = convert_mult_to_rgb(val_imgs[i][j], val_features[i][j])
+
+                else:
+                    new_image = torch.where(
+                        val_features[i][j] > 0.5,
+                        13 / 17,
+                        all_images_list[i][j],
+                    )
+                    img = convert_gray_to_rgb(new_image)
+                    val_img = convert_gray_to_rgb(val_imgs[i][j])
+                    utils.save_image(
+                        new_image,
+                        str(
+                            self.results_folder
+                            / filepath
+                            / f"sample-{idxs[i][j]}.png"
+                        ),
+                    )
+                    utils.save_image(
+                        val_imgs[i][j],
+                        str(
+                            self.results_folder
+                            / filepath
+                            / f"real-{idxs[i][j]}.png"
+                        ),
+                    )
+                micro_iou, macro_iou = cal_iou(img, val_img)
                 micro_iou_list.append(micro_iou)
                 macro_iou_list.append(macro_iou)
+
                 utils.save_image(
-                    all_images_list[i][j],
+                    img,
                     str(
                         self.results_folder
-                        / f"cond_scale-{self.cond_scale}"
-                        / f"sample-{idxs[i][j]}.png"
+                        / filepath
+                        / f"rgb_sample-{idxs[i][j]}.png"
                     ),
                 )
                 utils.save_image(
-                    val_imgs[i][j],
+                    val_img,
                     str(
                         self.results_folder
-                        / f"cond_scale-{self.cond_scale}"
-                        / f"real-{idxs[i][j]}.png"
+                        / filepath
+                        / f"rgb_real-{idxs[i][j]}.png"
                     ),
                 )
                 with open(
                     self.results_folder
-                    / f"cond_scale-{self.cond_scale}"
+                    / filepath
                     / f"val_text-{idxs[i][j]}.txt",
                     "w",
                 ) as f:
@@ -505,16 +410,14 @@ class Trainer(object):
                     val_features[i][j],
                     str(
                         self.results_folder
-                        / f"cond_scale-{self.cond_scale}"
+                        / filepath
                         / f"feature-{idxs[i][j]}.png"
                     ),
                 )
         micro_iou = sum(micro_iou_list) / len(micro_iou_list)
         macro_iou = sum(macro_iou_list) / len(macro_iou_list)
         print(f"micro_iou: {micro_iou}, macro_iou: {macro_iou}")
-        with open(
-            self.results_folder / f"cond_scale-{self.cond_scale}" / f"iou.txt", "w"
-        ) as f:
+        with open(self.results_folder / filepath / f"iou.txt", "w") as f:
             for i in range(len(micro_iou_list)):
                 f.write(
                     f"image{idxs[i//self.batch_size][i%self.batch_size]}-micro_iou: {micro_iou_list[i]}, macro_iou: {macro_iou_list[i]}\n"

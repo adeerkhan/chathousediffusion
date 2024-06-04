@@ -188,14 +188,14 @@ def get_dgl(node_list, mask=0):
             if node.id < j and random.random() < mask:
                 dgl_graph.remove_edges(dgl_graph.edge_ids(node.id, j))
                 dgl_graph.remove_edges(dgl_graph.edge_ids(j, node.id))
-    erase_list = []
-    for i in range(dgl_graph.num_nodes()):
-        if random.random() < mask:
-            erase_list.append(i)
-            # no zero
-            if len(erase_list) == dgl_graph.num_nodes() - 1:
-                break
-    dgl_graph.remove_nodes(erase_list)
+    # erase_list = []
+    # for i in range(dgl_graph.num_nodes()):
+    #     if random.random() < mask:
+    #         erase_list.append(i)
+    #         # no zero
+    #         if len(erase_list) == dgl_graph.num_nodes() - 1:
+    #             break
+    # dgl_graph.remove_nodes(erase_list)
     return dgl_graph
 
 

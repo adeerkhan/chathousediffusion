@@ -890,11 +890,13 @@ class Unet(nn.Module):
         combine_upsample_fmaps=False,  # combine feature maps from all upsample blocks, used in unet squared successfully
         pixel_shuffle_upsample=True,  # may address checkboard artifacts
         use_t5_feature=True,
-        omit_graphormer=False
+        omit_graphormer=False,
+        graphormer_layers=1
     ):
         super().__init__()
+        
         if use_t5_feature:
-            self.graphormer=Graphormer(in_feature=text_embed_dim*3, embedding_dim=cond_dim, ffn_embedding_dim=cond_dim, num_encoder_layers=1)
+            self.graphormer=Graphormer(in_feature=text_embed_dim*3, embedding_dim=cond_dim, ffn_embedding_dim=cond_dim, num_encoder_layers=graphormer_layers)
             self.graphormerembedded=nn.Linear(cond_dim,cond_dim)
         else:
             self.graphormer=Graphormer(num_encoder_layers=1)
@@ -902,6 +904,7 @@ class Unet(nn.Module):
         if omit_graphormer:
             self.graphormerembedded=nn.Linear(in_features=text_embed_dim*3, out_features=cond_dim)
         self.omit_graphormer=omit_graphormer
+        self.graph_drop_embedded=nn.Parameter(torch.randn(1, 50, cond_dim))
 
         # guide researchers
 
@@ -1430,7 +1433,8 @@ class Unet(nn.Module):
 
         if cond_scale == 1:
             return logits
-
+        if kwargs.get("text_embeds", None) is None:
+            kwargs["graphormer_dict"]=None
         null_logits = self.forward(*args, cond_drop_prob=1.0, **kwargs)
         return null_logits + (logits - null_logits) * cond_scale
 
@@ -1581,6 +1585,13 @@ class Unet(nn.Module):
             else:
                 text_tokens=self.graphormer(**graphormer_dict)
                 text_tokens=self.graphormerembedded(text_tokens)
+            text_keep_mask = prob_mask_like(
+                (batch_size,), 1 - cond_drop_prob, device=device
+            )
+            text_keep_mask_embed = rearrange(text_keep_mask, "b -> b 1 1")
+            graph_drop_embedded=self.graph_drop_embedded.to(text_tokens.dtype)
+            graph_drop_embedded=graph_drop_embedded[:,:text_tokens.shape[1],:]
+            text_tokens=torch.where(text_keep_mask_embed,text_tokens,graph_drop_embedded)
         # main conditioning tokens (c)
 
         c = (
