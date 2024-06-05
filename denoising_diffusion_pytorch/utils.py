@@ -5,6 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+import os
+import random
+import numpy as np
 
 # constants
 
@@ -141,3 +144,14 @@ def prob_mask_like(shape, prob, device):
         return torch.zeros(shape, device = device, dtype = torch.bool)
     else:
         return torch.zeros(shape, device = device).float().uniform_(0, 1) < prob
+    
+    
+def seed_torch(seed=1029):
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)  # 为了禁止hash随机化，使得实验可复现
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True

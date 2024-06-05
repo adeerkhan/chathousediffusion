@@ -129,6 +129,10 @@ def get_nodes(text):
         for room in value.get("rooms"):
             name = room.get("name", "Unknown")
             link = room.get("link", [])
+            if len(link)>0 and isinstance(link[0],list):
+                link = link[0]
+            if len(link)>0 and not isinstance(link[0], str):
+                link = []
             location = room.get("location", "Unknown")
             size = room.get("size", "Unknown")
             category = key

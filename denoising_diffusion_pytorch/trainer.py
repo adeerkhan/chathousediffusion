@@ -11,8 +11,6 @@ from tqdm.auto import tqdm
 from ema_pytorch import EMA
 
 
-from .fid_evaluation import FIDEvaluation
-
 from .version import __version__
 
 import os
@@ -47,16 +45,13 @@ class Trainer(object):
         num_samples=25,
         results_folder="./results",
         convert_image_to=None,
-        calculate_fid=True,
-        inception_block_idx=2048,
         max_grad_norm=1.0,
-        num_fid_samples=50000,
-        save_best_and_latest_only=False,
         cond_scale=1,
         mask=0.1,
         use_graphormer=True,
         onehot=True,
-        train_num_workers=8
+        train_num_workers=8,
+        mode="train",
     ):
         super().__init__()
 
@@ -64,7 +59,6 @@ class Trainer(object):
 
         self.model = diffusion_model
         self.channels = diffusion_model.channels
-        is_ddim_sampling = diffusion_model.is_ddim_sampling
         self.onehot = onehot
 
         # default convert_image_to depending on channels
@@ -92,17 +86,30 @@ class Trainer(object):
         self.max_grad_norm = max_grad_norm
 
         # dataset and dataloader
-
-        self.train_ds = Dataset(
-            folder_image,
-            folder_mask,
-            folder_text,
-            self.image_size,
-            augment_flip=augment_flip,
-            convert_image_to=convert_image_to,
-            mask=mask,
-            onehot=onehot,
-        )
+        if mode == "train":
+            self.train_ds = Dataset(
+                folder_image,
+                folder_mask,
+                folder_text,
+                self.image_size,
+                augment_flip=augment_flip,
+                convert_image_to=convert_image_to,
+                mask=mask,
+                onehot=onehot,
+            )
+            assert (
+                len(self.train_ds) >= 100
+            ), "you should have at least 100 images in your folder. at least 10k images recommended"
+            train_dl = DataLoader(
+                self.train_ds,
+                batch_size=train_batch_size,
+                shuffle=True,
+                pin_memory=False,
+                # num_workers=8,
+                num_workers=train_num_workers,
+                collate_fn=collate_fn,
+            )
+            self.train_dl = cycle(train_dl)
 
         self.val_ds = Dataset(
             folder_image + "_test",
@@ -115,23 +122,6 @@ class Trainer(object):
             onehot=onehot,
         )
 
-        assert (
-            len(self.train_ds) >= 100
-        ), "you should have at least 100 images in your folder. at least 10k images recommended"
-
-        # self.train_ds, self.val_ds = torch.utils.data.random_split(self.ds, [len(self.ds) - train_batch_size, train_batch_size])
-
-        # dl = DataLoader(self.ds, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
-        train_dl = DataLoader(
-            self.train_ds,
-            batch_size=train_batch_size,
-            shuffle=True,
-            pin_memory=False,
-            # num_workers=8,
-            num_workers=train_num_workers,
-            collate_fn=collate_fn,
-        )
-
         val_dl = DataLoader(
             self.val_ds,
             batch_size=train_batch_size,
@@ -141,8 +131,6 @@ class Trainer(object):
             collate_fn=collate_fn,
         )
 
-        self.train_dl = cycle(train_dl)
-        # self.val_dl = cycle(val_dl)
         self.val_dl = val_dl
 
         # optimizer
@@ -160,32 +148,6 @@ class Trainer(object):
         # step counter state
 
         self.step = 0
-
-        # FID-score computation
-
-        self.calculate_fid = calculate_fid
-
-        if self.calculate_fid:
-            if not is_ddim_sampling:
-                pass
-            self.fid_scorer = FIDEvaluation(
-                batch_size=self.batch_size,
-                dl=self.train_dl,
-                sampler=self.ema.ema_model,
-                channels=self.channels,
-                stats_dir=results_folder,
-                device=self.device,
-                num_fid_samples=num_fid_samples,
-                inception_block_idx=inception_block_idx,
-            )
-
-        if save_best_and_latest_only:
-            assert (
-                calculate_fid
-            ), "`calculate_fid` must be True to provide a means for model evaluation for `save_best_and_latest_only`."
-            self.best_fid = 1e10  # infinite
-
-        self.save_best_and_latest_only = save_best_and_latest_only
         self.cond_scale = cond_scale
         self.use_graphormer = use_graphormer
 
@@ -262,11 +224,7 @@ class Trainer(object):
 
                 self.opt.step()
                 self.opt.zero_grad()
-
                 self.step += 1
-
-                # profiler.stop()
-                # profiler.print()
                 self.ema.update()
 
                 if self.step != 0 and divisible_by(
@@ -275,17 +233,7 @@ class Trainer(object):
                     self.ema.ema_model.eval()
                     milestone = self.step // self.save_and_sample_every
                     self.val(milestone=milestone)
-                    # whether to calculate fid
-
-                    if self.calculate_fid:
-                        fid_score = self.fid_scorer.fid_score()
-                    if self.save_best_and_latest_only:
-                        if self.best_fid > fid_score:
-                            self.best_fid = fid_score
-                            self.save("best")
-                        self.save("latest")
-                    else:
-                        self.save(milestone)
+                    self.save(milestone)
                     torch.cuda.empty_cache()
                 pbar.update(1)
 
@@ -293,7 +241,7 @@ class Trainer(object):
         if milestone is not None:
             if not os.path.exists(self.results_folder / f"step-{milestone}"):
                 os.makedirs(self.results_folder / f"step-{milestone}")
-            filepath=f"step-{milestone}"
+            filepath = f"step-{milestone}"
         elif load_model is not None:
             self.load(load_model)
             self.ema.copy_params_from_model_to_ema()
@@ -302,10 +250,10 @@ class Trainer(object):
                 self.results_folder / f"cond_scale-{self.cond_scale}"
             ):
                 os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}")
-            filepath=f"cond_scale-{self.cond_scale}"
+            filepath = f"cond_scale-{self.cond_scale}"
         else:
             print("Error: no model")
-            return 
+            return
         with torch.inference_mode():
             all_images_list = []
             val_imgs = []
@@ -366,18 +314,12 @@ class Trainer(object):
                     utils.save_image(
                         new_image,
                         str(
-                            self.results_folder
-                            / filepath
-                            / f"sample-{idxs[i][j]}.png"
+                            self.results_folder / filepath / f"sample-{idxs[i][j]}.png"
                         ),
                     )
                     utils.save_image(
                         val_imgs[i][j],
-                        str(
-                            self.results_folder
-                            / filepath
-                            / f"real-{idxs[i][j]}.png"
-                        ),
+                        str(self.results_folder / filepath / f"real-{idxs[i][j]}.png"),
                     )
                 micro_iou, macro_iou = cal_iou(img, val_img)
                 micro_iou_list.append(micro_iou)
@@ -386,33 +328,21 @@ class Trainer(object):
                 utils.save_image(
                     img,
                     str(
-                        self.results_folder
-                        / filepath
-                        / f"rgb_sample-{idxs[i][j]}.png"
+                        self.results_folder / filepath / f"rgb_sample-{idxs[i][j]}.png"
                     ),
                 )
                 utils.save_image(
                     val_img,
-                    str(
-                        self.results_folder
-                        / filepath
-                        / f"rgb_real-{idxs[i][j]}.png"
-                    ),
+                    str(self.results_folder / filepath / f"rgb_real-{idxs[i][j]}.png"),
                 )
                 with open(
-                    self.results_folder
-                    / filepath
-                    / f"val_text-{idxs[i][j]}.txt",
+                    self.results_folder / filepath / f"val_text-{idxs[i][j]}.txt",
                     "w",
                 ) as f:
                     f.write(val_texts[i][j])
                 utils.save_image(
                     val_features[i][j],
-                    str(
-                        self.results_folder
-                        / filepath
-                        / f"feature-{idxs[i][j]}.png"
-                    ),
+                    str(self.results_folder / filepath / f"feature-{idxs[i][j]}.png"),
                 )
         micro_iou = sum(micro_iou_list) / len(micro_iou_list)
         macro_iou = sum(macro_iou_list) / len(macro_iou_list)

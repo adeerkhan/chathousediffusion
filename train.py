@@ -1,91 +1,83 @@
-from denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
+from denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer, seed_torch
 import os
-import random
-import torch
-import numpy as np
-
-
-def seed_torch(seed=1029):
-    random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)  # 为了禁止hash随机化，使得实验可复现
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
+import pickle
 
 
 if __name__ == "__main__":
-    # model = Unet(
-    #     channels= 4,
-    #     dim = 64,
-    #     out_dim = 3,
-    #     dim_mults = (1, 2, 4, 8),
-    #     flash_attn = True
-    # )
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-    onehot=False
+    seed_torch()
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    onehot = False
     if onehot:
-        channels=18
+        channels = 18
     else:
-        channels=1
+        channels = 1
+    omit_graphormer = True
+    results_folder = "./results/text19"
+    train_num_workers = 0
 
+    unet_dict = {
+        "dim": 64,
+        "cond_dim": 512,
+        "dim_mults": (1, 2, 4, 8),
+        "num_resnet_blocks": 3,
+        "channels": channels,
+        "cond_images_channels": 1,
+        "layer_attns": (False, True, True, True),
+        "omit_graphormer": omit_graphormer,
+        "graphormer_layers": 1,
+    }
 
-    model = Unet(
-        dim=64,
-        cond_dim=512,
-        dim_mults=(1, 2, 4, 8),
-        num_resnet_blocks=3,
-        channels=channels,
-        cond_images_channels=1,
-        layer_attns=(False, True, True, True),
-        omit_graphormer=False,
-        graphormer_layers=1
-    )
+    diffusion_dict = {
+        "image_size": 64,
+        "timesteps": 1000,
+        "sampling_timesteps": 50,
+        "cond_drop_prob": 0.1,
+    }
 
-    # model = Unet(
-    #     dim = 32,
-    #     cond_dim = 64,
-    #     dim_mults = (1, 2, 4, 8),
-    #     cond_images_channels = 1,
-    #     layer_attns = (False, False, False, True),
-    #     layer_cross_attns= (False, False, False, True),
-    # )
+    trainer_dict = {
+        "train_batch_size": 32,
+        "train_lr": 8e-5,
+        "train_num_steps": 500000,
+        "gradient_accumulate_every": 1,
+        "ema_decay": 0.995,
+        "save_and_sample_every": 5000,
+        "augment_flip": False,
+        "cond_scale": 1,
+        "convert_image_to": "L",
+        "mask": 0.1,
+        "onehot": onehot,
+    }
 
-    diffusion = GaussianDiffusion(
-        model,
-        image_size=64,
-        timesteps=1000,  # number of steps
-        sampling_timesteps=50,  # number of sampling timesteps (using ddim for faster inference [see citation for ddim paper])
-        cond_drop_prob=0.1
-    )
+    if not os.path.exists(results_folder):
+        os.makedirs(results_folder)
+
+    model = Unet(**unet_dict)
+
+    diffusion = GaussianDiffusion(model, **diffusion_dict)
 
     trainer = Trainer(
         diffusion,
         "../chathousediffusion/data/0531/image",
         "../chathousediffusion/data/0531/mask",
         "../chathousediffusion/data/0531/text",
-        train_batch_size=32,
-        train_lr=8e-5,
-        train_num_steps=500000,  # total training steps
-        gradient_accumulate_every=1,  # gradient accumulation steps
-        ema_decay=0.995,  # exponential moving average decay
-        calculate_fid=False,  # whether to calculate fid during training
-        save_and_sample_every=5000,
-        augment_flip=False,
-        results_folder="./results/text20",
-        cond_scale=1,
-        convert_image_to="L",
-        mask=0.1,
-        onehot=onehot,
-        train_num_workers=8
+        **trainer_dict,
+        results_folder=results_folder,
+        train_num_workers=train_num_workers
     )
+
+    
+    with open(os.path.join(results_folder, "params.pkl"), "wb") as f:
+        pickle.dump(
+            {
+                "unet_dict": unet_dict,
+                "diffusion_dict": diffusion_dict,
+                "trainer_dict": trainer_dict,
+            },
+            f,
+        )
 
     trainer.train()
     # for i in range(5):
     #     seed_torch()
     #     trainer.cond_scale=i
     #     trainer.val(load_model=51)
-
