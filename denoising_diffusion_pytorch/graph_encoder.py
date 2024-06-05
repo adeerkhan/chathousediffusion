@@ -295,9 +295,11 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
 
     # degree padding
     in_degree = pad_sequence(in_degree, batch_first=True)
-    in_degree = F.pad(in_degree, p2d, "constant", 0)
+    p1d = (0, max_num_nodes - in_degree.shape[1])
+    in_degree = F.pad(in_degree, p1d, "constant", 0)
     out_degree = pad_sequence(out_degree, batch_first=True)
-    out_degree = F.pad(out_degree, p2d, "constant", 0)
+    p1d = (0, max_num_nodes - out_degree.shape[1])
+    out_degree = F.pad(out_degree, p1d, "constant", 0)
 
     return (
         attn_mask,
