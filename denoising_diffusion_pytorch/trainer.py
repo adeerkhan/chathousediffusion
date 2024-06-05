@@ -15,11 +15,16 @@ from .version import __version__
 
 import os
 
-from .utils import exists, has_int_squareroot, divisible_by, num_to_groups
+from .utils import exists, has_int_squareroot, divisible_by, convert_image_to_fn
 from .dataset import Dataset, collate_fn
 from .eval import cal_iou
 from itertools import cycle
 from .image_process import convert_gray_to_rgb, convert_mult_to_rgb
+from .graph_encoder import get_nodes, get_dgl, collate, MAX_NUM_NODES
+
+from torchvision import transforms as T
+from functools import partial
+from PIL import Image
 
 
 # trainer class
@@ -111,27 +116,28 @@ class Trainer(object):
             )
             self.train_dl = cycle(train_dl)
 
-        self.val_ds = Dataset(
-            folder_image + "_test",
-            folder_mask + "_test",
-            folder_text + "_test",
-            self.image_size,
-            augment_flip=augment_flip,
-            convert_image_to=convert_image_to,
-            mask=0,
-            onehot=onehot,
-        )
+        if mode =="train" or mode == "val":
+            self.val_ds = Dataset(
+                folder_image + "_test",
+                folder_mask + "_test",
+                folder_text + "_test",
+                self.image_size,
+                augment_flip=augment_flip,
+                convert_image_to=convert_image_to,
+                mask=0,
+                onehot=onehot,
+            )
 
-        val_dl = DataLoader(
-            self.val_ds,
-            batch_size=train_batch_size,
-            shuffle=False,
-            pin_memory=False,
-            num_workers=0,
-            collate_fn=collate_fn,
-        )
+            val_dl = DataLoader(
+                self.val_ds,
+                batch_size=train_batch_size,
+                shuffle=False,
+                pin_memory=False,
+                num_workers=0,
+                collate_fn=collate_fn,
+            )
 
-        self.val_dl = val_dl
+            self.val_dl = val_dl
 
         # optimizer
 
@@ -176,6 +182,9 @@ class Trainer(object):
         )
 
         model = self.model
+        data["model"]["model.graph_drop_embedded"]=data["model"]["model.graph_drop_embedded"][:,:MAX_NUM_NODES,:]
+        data["ema"]["ema_model.model.graph_drop_embedded"]=data["ema"]["ema_model.model.graph_drop_embedded"][:,:MAX_NUM_NODES,:]
+        data["ema"]["online_model.model.graph_drop_embedded"]=data["ema"]["online_model.model.graph_drop_embedded"][:,:MAX_NUM_NODES,:]
         model.load_state_dict(data["model"])
 
         self.step = data["step"]
@@ -353,3 +362,60 @@ class Trainer(object):
                     f"image{idxs[i//self.batch_size][i%self.batch_size]}-micro_iou: {micro_iou_list[i]}, macro_iou: {macro_iou_list[i]}\n"
                 )
             f.write(f"micro_iou: {micro_iou}, macro_iou: {macro_iou}")
+
+    def predict(self, load_model, feature, text):
+        self.load(load_model)
+        self.ema.copy_params_from_model_to_ema()
+        self.ema.ema_model.eval()
+        nodes = get_nodes(text)
+        graph = get_dgl(nodes)
+        attn_mask, node_feat, in_degree, out_degree, path_data, dist = collate([graph])
+        graphormer_dict = {
+            "attn_mask": attn_mask,
+            "node_feat": node_feat,
+            "in_degree": in_degree,
+            "out_degree": out_degree,
+            "path_data": path_data,
+            "dist": dist,
+        }
+        transform = T.Compose(
+            [
+                T.Lambda(partial(convert_image_to_fn, "L")),
+                T.Resize(self.image_size),
+                T.CenterCrop(self.image_size),
+                T.ToTensor(),
+            ]
+        )
+        feature = transform(feature)
+        feature = feature.unsqueeze(0)
+        feature=feature.to(self.device)
+        for k, v in graphormer_dict.items():
+            graphormer_dict[k] = v.to(self.device)
+        if self.use_graphormer:
+            text = None
+        else:
+            graphormer_dict = None
+        image = self.ema.ema_model.sample(
+            batch_size=1,
+            feature=feature,
+            text=text,
+            graphormer_dict=graphormer_dict,
+            cond_scale=self.cond_scale,
+        )
+        if not self.onehot:
+            new_image = torch.where(
+                feature[0] > 0.5,
+                13 / 17,
+                image[0],
+            )
+            img = convert_gray_to_rgb(new_image)
+        ndarr = (
+            img.mul(255)
+            .add_(0.5)
+            .clamp_(0, 255)
+            .permute(1, 2, 0)
+            .to("cpu", torch.uint8)
+            .numpy()
+        )
+        im = Image.fromarray(ndarr)
+        return im
