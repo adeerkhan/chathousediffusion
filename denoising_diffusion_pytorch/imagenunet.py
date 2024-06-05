@@ -6,6 +6,8 @@ from functools import partial
 from einops.layers.torch import Rearrange
 import math
 from pathlib import Path
+from .cross_attention_edit import AttentionEdit
+from typing import Optional
 
 from .t5 import get_encoded_dim, DEFAULT_T5_NAME
 from .utils import (
@@ -288,6 +290,13 @@ class Attention(nn.Module):
 
         attn = sim.softmax(dim=-1, dtype=torch.float32)
         attn = attn.to(sim.dtype)
+        # if AttentionEdit.is_instance_created():
+        #     edit=AttentionEdit()
+        #     if edit.has_attn():
+        #         attn = edit.replace_attn(attn)
+        #     else:
+        #         edit.save_attn(attn)
+        #     edit.next_index()
 
         # aggregate values
 
@@ -539,6 +548,13 @@ class CrossAttention(nn.Module):
 
         attn = sim.softmax(dim=-1, dtype=torch.float32)
         attn = attn.to(sim.dtype)
+        if AttentionEdit.is_instance_created():
+            edit=AttentionEdit()
+            if edit.has_attn():
+                attn = edit.replace_attn(attn)
+            else:
+                edit.save_attn(attn)
+            edit.next_index()
 
         out = einsum("b h i j, b h j d -> b h i d", attn, v)
         out = rearrange(out, "b h n d -> b n (h d)")
@@ -895,7 +911,9 @@ class Unet(nn.Module):
         graphormer_layers=1
     ):
         super().__init__()
-        
+
+        self.cross_attention_edit: Optional[AttentionEdit] = None
+
         if use_t5_feature:
             self.graphormer=Graphormer(in_feature=text_embed_dim*3, embedding_dim=cond_dim, ffn_embedding_dim=cond_dim, num_encoder_layers=graphormer_layers)
             self.graphormerembedded=nn.Linear(cond_dim,cond_dim)

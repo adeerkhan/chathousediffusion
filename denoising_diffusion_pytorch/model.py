@@ -18,6 +18,8 @@ from .utils import (
 )
 from .t5 import t5_encode_text
 from .imagenunet import Unet
+from .cross_attention_edit import AttentionEdit
+from typing import Optional
 
 # gaussian diffusion trainer class
 
@@ -93,7 +95,7 @@ class GaussianDiffusion(nn.Module):
             not hasattr(model, "random_or_learned_sinusoidal_cond")
             or not model.random_or_learned_sinusoidal_cond
         )
-
+        self.cross_attention_edit: Optional[AttentionEdit] = None
         self.model = model
 
         self.channels = self.model.out_dim
@@ -437,8 +439,12 @@ class GaussianDiffusion(nn.Module):
         imgs = [img]
 
         x_start = None
-
+        
+        if self.cross_attention_edit is not None:
+            self.cross_attention_edit.reset()
         for time, time_next in tqdm(time_pairs, desc="sampling loop time step"):
+            if self.cross_attention_edit is not None:
+                self.cross_attention_edit.next_timestep()
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
             pred_noise, x_start, *_ = self.model_predictions(
@@ -454,7 +460,7 @@ class GaussianDiffusion(nn.Module):
             )
 
             if time_next < 0:
-                img = x_start
+                img = x_start * feature_to_mask(feature)
                 imgs.append(img)
                 continue
 

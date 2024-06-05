@@ -25,7 +25,8 @@ if __name__ == "__main__":
         **params["trainer_dict"],
         results_folder=results_folder,
         train_num_workers=train_num_workers,
-        mode="predict"
+        mode="predict",
+        inject_step=45
     )
 
     # trainer.val(load_model=5)
@@ -38,5 +39,10 @@ if __name__ == "__main__":
     for x in texts:
         if int(x[0].replace(".png", "").replace(".json", "").split("/")[-1]) == index:
             text = x[1]
+    seed_torch()
     image = trainer.predict(52, mask, text)
-    image.show()
+    image.save(f"image_{index}.png")
+    new_text=text.replace("\"south\"", "\"southwest\"")
+    seed_torch()
+    new_image = trainer.predict(52, mask, new_text)
+    new_image.save(f"image_{index}_new.png")

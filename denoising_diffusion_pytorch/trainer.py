@@ -21,6 +21,7 @@ from .eval import cal_iou
 from itertools import cycle
 from .image_process import convert_gray_to_rgb, convert_mult_to_rgb
 from .graph_encoder import get_nodes, get_dgl, collate, MAX_NUM_NODES
+from .cross_attention_edit import AttentionEdit
 
 from torchvision import transforms as T
 from functools import partial
@@ -57,6 +58,7 @@ class Trainer(object):
         onehot=True,
         train_num_workers=8,
         mode="train",
+        inject_step=25,
     ):
         super().__init__()
 
@@ -116,7 +118,7 @@ class Trainer(object):
             )
             self.train_dl = cycle(train_dl)
 
-        if mode =="train" or mode == "val":
+        if mode == "train" or mode == "val":
             self.val_ds = Dataset(
                 folder_image + "_test",
                 folder_mask + "_test",
@@ -138,6 +140,13 @@ class Trainer(object):
             )
 
             self.val_dl = val_dl
+
+        if mode == "predict":
+            self.cross_attention_edit = AttentionEdit(
+                total_steps=self.model.sampling_timesteps, inject_step=inject_step
+            )
+            self.model.cross_attention_edit = self.cross_attention_edit
+            self.model.model.cross_attention_edit = self.cross_attention_edit
 
         # optimizer
 
@@ -182,9 +191,15 @@ class Trainer(object):
         )
 
         model = self.model
-        data["model"]["model.graph_drop_embedded"]=data["model"]["model.graph_drop_embedded"][:,:MAX_NUM_NODES,:]
-        data["ema"]["ema_model.model.graph_drop_embedded"]=data["ema"]["ema_model.model.graph_drop_embedded"][:,:MAX_NUM_NODES,:]
-        data["ema"]["online_model.model.graph_drop_embedded"]=data["ema"]["online_model.model.graph_drop_embedded"][:,:MAX_NUM_NODES,:]
+        data["model"]["model.graph_drop_embedded"] = data["model"][
+            "model.graph_drop_embedded"
+        ][:, :MAX_NUM_NODES, :]
+        data["ema"]["ema_model.model.graph_drop_embedded"] = data["ema"][
+            "ema_model.model.graph_drop_embedded"
+        ][:, :MAX_NUM_NODES, :]
+        data["ema"]["online_model.model.graph_drop_embedded"] = data["ema"][
+            "online_model.model.graph_drop_embedded"
+        ][:, :MAX_NUM_NODES, :]
         model.load_state_dict(data["model"])
 
         self.step = data["step"]
@@ -388,7 +403,7 @@ class Trainer(object):
         )
         feature = transform(feature)
         feature = feature.unsqueeze(0)
-        feature=feature.to(self.device)
+        feature = feature.to(self.device)
         for k, v in graphormer_dict.items():
             graphormer_dict[k] = v.to(self.device)
         if self.use_graphormer:
