@@ -25,7 +25,7 @@ if __name__ == "__main__":
     #     flash_attn = True
     # )
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     onehot=False
     if onehot:
         channels=18
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         channels=channels,
         cond_images_channels=1,
         layer_attns=(False, True, True, True),
-        omit_graphormer=False,
-        graphormer_layers=6
+        omit_graphormer=True,
+        graphormer_layers=1
     )
 
     # model = Unet(
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         calculate_fid=False,  # whether to calculate fid during training
         save_and_sample_every=5000,
         augment_flip=False,
-        results_folder="./results/text18",
+        results_folder="./results/text19",
         cond_scale=1,
         convert_image_to="L",
         mask=0.1,
@@ -87,5 +87,5 @@ if __name__ == "__main__":
     # for i in range(5):
     #     seed_torch()
     #     trainer.cond_scale=i
-    # trainer.val(load_model=46)
+    #     trainer.val(load_model=51)
 

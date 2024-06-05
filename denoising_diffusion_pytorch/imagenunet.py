@@ -21,6 +21,7 @@ from .utils import (
     print_once,
 )
 from .graphormer import Graphormer
+from .graph_encoder import MAX_NUM_NODES
 
 # norms and residuals
 
@@ -904,7 +905,7 @@ class Unet(nn.Module):
         if omit_graphormer:
             self.graphormerembedded=nn.Linear(in_features=text_embed_dim*3, out_features=cond_dim)
         self.omit_graphormer=omit_graphormer
-        self.graph_drop_embedded=nn.Parameter(torch.randn(1, 50, cond_dim))
+        self.graph_drop_embedded=nn.Parameter(torch.randn(1, MAX_NUM_NODES, cond_dim))
 
         # guide researchers
 
@@ -1429,13 +1430,15 @@ class Unet(nn.Module):
     # forward with classifier free guidance
 
     def forward_with_cond_scale(self, *args, cond_scale=1.0, **kwargs):
-        logits = self.forward(*args, **kwargs)
-
+        if cond_scale!=0:
+            logits = self.forward(*args, **kwargs)
         if cond_scale == 1:
             return logits
         if kwargs.get("text_embeds", None) is None:
             kwargs["graphormer_dict"]=None
         null_logits = self.forward(*args, cond_drop_prob=1.0, **kwargs)
+        if cond_scale==0:
+            return null_logits
         return null_logits + (logits - null_logits) * cond_scale
 
     def forward(
@@ -1590,7 +1593,6 @@ class Unet(nn.Module):
             )
             text_keep_mask_embed = rearrange(text_keep_mask, "b -> b 1 1")
             graph_drop_embedded=self.graph_drop_embedded.to(text_tokens.dtype)
-            graph_drop_embedded=graph_drop_embedded[:,:text_tokens.shape[1],:]
             text_tokens=torch.where(text_keep_mask_embed,text_tokens,graph_drop_embedded)
         # main conditioning tokens (c)
 

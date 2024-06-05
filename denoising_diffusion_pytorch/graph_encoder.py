@@ -12,7 +12,7 @@ import pickle
 import os
 import numpy as np
 
-# MAX_ROOMS_PER_TYPE = 4
+MAX_NUM_NODES=10
 
 
 room_category = {
@@ -101,7 +101,7 @@ class Node:
         self.location = location if location!="" else "Unknown"
         self.size = size if size!="" else "Unknown"
         self.category = category
-        self.index = int(name.replace(category, "")) if category != "Unknown" else -1
+        # self.index = int(name.replace(category, "")) if category != "Unknown" else -1
         self.id = Node.ID
         Node.ID += 1
 
@@ -158,7 +158,7 @@ def get_dgl(node_list, mask=0):
                     (
                         np.array([room_category.get(node.category,room_category["Unknown"])])
                         if random.random() >= mask
-                        else np.array([np.zeros_like(room_category["Unknown"])])
+                        else np.array([room_category["Unknown"]])
                     ),
                     dtype=torch.float,
                 ),
@@ -166,7 +166,7 @@ def get_dgl(node_list, mask=0):
                     (
                         np.array([room_location.get(node.location,room_location["Unknown"])])
                         if random.random() >= mask
-                        else np.array([np.zeros_like(room_location["Unknown"])])
+                        else np.array([room_location["Unknown"]])
                     ),
                     dtype=torch.float,
                 ),
@@ -174,7 +174,7 @@ def get_dgl(node_list, mask=0):
                     (
                         np.array([room_size.get(node.size,room_size["Unknown"])])
                         if random.random() >= mask
-                        else np.array([np.zeros_like(room_size["Unknown"])])
+                        else np.array([room_size["Unknown"]])
                     ),
                     dtype=torch.float,
                 ),
@@ -228,7 +228,7 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
 
     num_graphs = len(graphs)
     num_nodes = [g.num_nodes() for g in graphs]
-    max_num_nodes = max(num_nodes)
+    max_num_nodes = MAX_NUM_NODES
 
     # Graphormer adds a virual node to the graph, which is connected to
     # all other nodes and supposed to represent the graph embedding. So
@@ -287,12 +287,17 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
 
         dist[i, : num_nodes[i], : num_nodes[i]] = dist_i
 
+
     # node feat padding
     node_feat = pad_sequence(node_feat, batch_first=True)
+    p2d = (0, 0, 0, max_num_nodes - node_feat.shape[1])
+    node_feat = F.pad(node_feat, p2d, "constant", 0)
 
     # degree padding
     in_degree = pad_sequence(in_degree, batch_first=True)
+    in_degree = F.pad(in_degree, p2d, "constant", 0)
     out_degree = pad_sequence(out_degree, batch_first=True)
+    out_degree = F.pad(out_degree, p2d, "constant", 0)
 
     return (
         attn_mask,
@@ -303,9 +308,8 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
         dist,
     )
 
-
+# from tqdm import tqdm
 # if __name__ == "__main__":
-#     t5_feature()
 #     text_path = "../chathousediffusion/data/new/text/json2.csv"
 #     texts = pd.read_csv(text_path)
 #     texts = [p for p in zip(texts["0"], texts["1"])]
@@ -313,7 +317,7 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
 #         key=lambda x: int(x[0].replace(".png", "").replace(".json", "").split("/")[-1])
 #     )
 #     graphs = []
-#     for i in range(10):
+#     for i in tqdm(range(len(texts))):
 #         text = texts[i][1]
 #         nodes = get_nodes(text)
 #         graph = get_dgl(nodes)

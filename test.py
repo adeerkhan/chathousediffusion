@@ -17,7 +17,7 @@ def seed_torch(seed=1029):
 
 if __name__ == '__main__':
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
     
     model = Unet(
         dim = 32,
