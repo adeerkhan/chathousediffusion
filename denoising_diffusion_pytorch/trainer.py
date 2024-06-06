@@ -15,7 +15,7 @@ from .version import __version__
 
 import os
 
-from .utils import exists, has_int_squareroot, divisible_by, convert_image_to_fn
+from .utils import exists, has_int_squareroot, divisible_by, convert_image_to_fn, seed_torch
 from .dataset import Dataset, collate_fn
 from .eval import cal_iou
 from itertools import cycle
@@ -378,7 +378,10 @@ class Trainer(object):
                 )
             f.write(f"micro_iou: {micro_iou}, macro_iou: {macro_iou}")
 
-    def predict(self, load_model, feature, text):
+    def predict(self, load_model, feature, text, repredict=False):
+        if repredict:
+            self.cross_attention_edit.clear_all()
+        seed_torch(self.cross_attention_edit.seed)
         self.load(load_model)
         self.ema.copy_params_from_model_to_ema()
         self.ema.ema_model.eval()
@@ -433,4 +436,5 @@ class Trainer(object):
             .numpy()
         )
         im = Image.fromarray(ndarr)
+        self.cross_attention_edit.end_of_generate()
         return im

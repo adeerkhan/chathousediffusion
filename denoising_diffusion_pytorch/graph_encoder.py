@@ -6,7 +6,7 @@ import json
 import torch
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
-from .t5 import t5_encode_text
+from .t5 import t5_encode_text, get_encoded_dim, DEFAULT_T5_NAME
 import random
 import pickle
 import os
@@ -119,7 +119,7 @@ class Node:
 
 
 def get_nodes(text):
-    info = json.loads(text)
+    info = json.loads(text) if text != "\n" else {}
     name2node = {}
     node_list = []
     Node.ID = 0
@@ -249,47 +249,52 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
     for i in range(num_graphs):
         # A binary mask where invalid positions are indicated by True.
         attn_mask[i, :, num_nodes[i] + 1 :] = 1
-
-        # +1 to distinguish padded non-existing nodes from real nodes
-
-        node_feat_i = torch.cat(
-            [
-                graphs[i].ndata["category"],
-                graphs[i].ndata["location"],
-                graphs[i].ndata["size"],
-            ],
-            dim=-1,
-        )
-        node_feat.append(node_feat_i)
-
-        in_degree.append(torch.clamp(graphs[i].in_degrees() + 1, min=0, max=max_degree))
-        out_degree.append(
-            torch.clamp(graphs[i].out_degrees() + 1, min=0, max=max_degree)
-        )
-
-        # Path padding to make all paths to the same length "max_len".
-        dist_i, path = shortest_dist(graphs[i], return_paths=True)
-        path_len = path.size(dim=2)
-        # shape of shortest_path: [n, n, max_len]
-        if path_len >= multi_hop_max_dist:
-            shortest_path = path[:, :, :multi_hop_max_dist]
+        if num_nodes[i]==0:
+            node_feat_i=torch.zeros(1, get_encoded_dim(DEFAULT_T5_NAME)*3)
+            node_feat.append(node_feat_i)
+            in_degree.append(torch.zeros(1,dtype=torch.long))
+            out_degree.append(torch.zeros(1,dtype=torch.long))
+            path_data.append(torch.zeros(max_num_nodes, max_num_nodes, multi_hop_max_dist, 1))
         else:
-            p1d = (0, multi_hop_max_dist - path_len)
-            # Use the same -1 padding as shortest_dist for
-            # invalid edge IDs.
-            shortest_path = F.pad(path, p1d, "constant", -1)
-        pad_num_nodes = max_num_nodes - num_nodes[i]
-        p3d = (0, 0, 0, pad_num_nodes, 0, pad_num_nodes)
-        shortest_path = F.pad(shortest_path, p3d, "constant", -1)
-        # shortest_dist pads non-existing edges (at the end of shortest
-        # paths) with edge IDs -1, and th.zeros(1, edata.shape[1]) stands
-        # for all padded edge features.
-        edata = torch.cat(
-            [torch.ones((graphs[i].num_edges(), 1)), torch.zeros(1, 1)], dim=0
-        )
-        path_data.append(edata[shortest_path])
+        # +1 to distinguish padded non-existing nodes from real nodes
+            node_feat_i = torch.cat(
+                [
+                    graphs[i].ndata["category"],
+                    graphs[i].ndata["location"],
+                    graphs[i].ndata["size"],
+                ],
+                dim=-1,
+            )
+            node_feat.append(node_feat_i)
 
-        dist[i, : num_nodes[i], : num_nodes[i]] = dist_i
+            in_degree.append(torch.clamp(graphs[i].in_degrees() + 1, min=0, max=max_degree))
+            out_degree.append(
+                torch.clamp(graphs[i].out_degrees() + 1, min=0, max=max_degree)
+            )
+
+            # Path padding to make all paths to the same length "max_len".
+            dist_i, path = shortest_dist(graphs[i], return_paths=True)
+            path_len = path.size(dim=2)
+            # shape of shortest_path: [n, n, max_len]
+            if path_len >= multi_hop_max_dist:
+                shortest_path = path[:, :, :multi_hop_max_dist]
+            else:
+                p1d = (0, multi_hop_max_dist - path_len)
+                # Use the same -1 padding as shortest_dist for
+                # invalid edge IDs.
+                shortest_path = F.pad(path, p1d, "constant", -1)
+            pad_num_nodes = max_num_nodes - num_nodes[i]
+            p3d = (0, 0, 0, pad_num_nodes, 0, pad_num_nodes)
+            shortest_path = F.pad(shortest_path, p3d, "constant", -1)
+            # shortest_dist pads non-existing edges (at the end of shortest
+            # paths) with edge IDs -1, and th.zeros(1, edata.shape[1]) stands
+            # for all padded edge features.
+            edata = torch.cat(
+                [torch.ones((graphs[i].num_edges(), 1)), torch.zeros(1, 1)], dim=0
+            )
+            path_data.append(edata[shortest_path])
+
+            dist[i, : num_nodes[i], : num_nodes[i]] = dist_i
 
 
     # node feat padding

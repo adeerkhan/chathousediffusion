@@ -1,8 +1,9 @@
+import random
 class AttentionEdit:
     __instance = None
     __hasInit = False
 
-    def __new__(cls,*args, **kwargs):
+    def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
             cls.__instance = object.__new__(cls)
             return cls.__instance
@@ -12,6 +13,7 @@ class AttentionEdit:
         if not self.__hasInit:
             self.total_steps = total_steps
             self.inject_step = inject_step
+            self.seed = 0
             self.mask_threshold = mask_threshold
             self.old_attn_dict = {
                 k: {} for k in range(total_steps)
@@ -37,7 +39,7 @@ class AttentionEdit:
 
     def replace_attn(self, new_attn):
         self.new_attn_dict[self.timestep][self.attn_index] = new_attn
-        if self.timestep <= self.inject_step:
+        if self.timestep < self.inject_step:
             return new_attn
         else:
             return self.old_attn_dict[self.timestep][self.attn_index]
@@ -52,3 +54,17 @@ class AttentionEdit:
     def reset(self):
         self.timestep = self.total_steps
         self.attn_index = 0
+
+    def end_of_generate(self):
+        if 0 in self.new_attn_dict[0]:
+            self.old_attn_dict = self.new_attn_dict
+            self.new_attn_dict = {k: {} for k in range(self.total_steps)}
+        else:
+            pass
+
+    def clear_all(self):
+        self.old_attn_dict = {k: {} for k in range(self.total_steps)}
+        self.new_attn_dict = {k: {} for k in range(self.total_steps)}
+        self.timestep = self.total_steps
+        self.attn_index = 0
+        self.seed=random.randint(0,1000000)

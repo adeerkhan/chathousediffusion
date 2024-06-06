@@ -8,7 +8,7 @@ import pandas as pd
 if __name__ == "__main__":
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    results_folder = "./results/text16"
+    results_folder = "./results/text20"
     train_num_workers = 0
     with open(os.path.join(results_folder, "params.pkl"), "rb") as f:
         params = pickle.load(f)
@@ -40,9 +40,10 @@ if __name__ == "__main__":
         if int(x[0].replace(".png", "").replace(".json", "").split("/")[-1]) == index:
             text = x[1]
     seed_torch()
-    image = trainer.predict(52, mask, text)
+    image = trainer.predict(30, mask, text)
     image.save(f"image_{index}.png")
     new_text=text.replace("\"south\"", "\"southwest\"")
     seed_torch()
-    new_image = trainer.predict(52, mask, new_text)
+    new_image = trainer.predict(30, mask, new_text)
     new_image.save(f"image_{index}_new.png")
+    
