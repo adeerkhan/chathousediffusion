@@ -33,6 +33,7 @@ class Dataset(Dataset):
         image_size,
         exts=["jpg", "jpeg", "png", "tiff"],
         augment_flip=False,
+        augment_affine=False,
         convert_image_to=None,
         mask=0,
         onehot=True
@@ -41,6 +42,7 @@ class Dataset(Dataset):
         # self.folder = folder
         self.image_size = image_size
         self.augment_flip = augment_flip
+        self.augment_affine = augment_affine
         self.mask = mask
         self.onehot=onehot
         self.image_paths = [
@@ -92,6 +94,10 @@ class Dataset(Dataset):
             img = image2tensor(img)
         mask = self.transform(mask)
         mask = T.ToTensor()(mask)
+        if self.augment_affine:
+            a=torch.stack([img,mask])
+            a=T.RandomAffine(degrees=0, translate=(0.25,0.25))(a)
+            img,mask=a[0],a[1]
         if self.augment_flip and random.random() > 0.5:
             img = T.RandomHorizontalFlip(p=1)(img)
             mask = T.RandomHorizontalFlip(p=1)(mask)

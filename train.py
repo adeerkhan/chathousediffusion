@@ -12,8 +12,8 @@ if __name__ == "__main__":
     else:
         channels = 1
     omit_graphormer = False
-    results_folder = "./results/text20"
-    train_num_workers = 0
+    results_folder = "./results/text21"
+    train_num_workers = 8
 
     unet_dict = {
         "dim": 64,
