@@ -3,7 +3,7 @@ import os
 import pickle
 
 def predict(mask,text,repredict=False):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     results_folder = "./results/text21"
     train_num_workers = 0
     with open(os.path.join(results_folder, "params.pkl"), "rb") as f:
@@ -26,5 +26,5 @@ def predict(mask,text,repredict=False):
         inject_step=48
     )
 
-    image = trainer.predict(38, mask, text, repredict)
+    image = trainer.predict(60, mask, text, repredict)
     return image
