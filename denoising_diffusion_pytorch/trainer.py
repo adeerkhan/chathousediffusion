@@ -273,10 +273,10 @@ class Trainer(object):
             self.ema.copy_params_from_model_to_ema()
             self.ema.ema_model.eval()
             if not os.path.exists(
-                self.results_folder / f"cond_scale-{self.cond_scale}"
+                self.results_folder / f"cond_scale-{self.cond_scale}-{load_model}"
             ):
-                os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}")
-            filepath = f"cond_scale-{self.cond_scale}"
+                os.makedirs(self.results_folder / f"cond_scale-{self.cond_scale}-{load_model}")
+            filepath = f"cond_scale-{self.cond_scale}-{load_model}"
         else:
             print("Error: no model")
             return

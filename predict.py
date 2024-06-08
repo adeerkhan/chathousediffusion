@@ -11,6 +11,7 @@ def predict(mask,text,repredict=False):
 
     model = Unet(**params["unet_dict"])
 
+    # params["diffusion_dict"]["sampling_timesteps"] = 50
     diffusion = GaussianDiffusion(model, **params["diffusion_dict"])
 
     trainer = Trainer(
@@ -25,5 +26,5 @@ def predict(mask,text,repredict=False):
         inject_step=48
     )
 
-    image = trainer.predict(35, mask, text, repredict)
+    image = trainer.predict(38, mask, text, repredict)
     return image
