@@ -380,13 +380,18 @@ class Trainer(object):
                 )
             f.write(f"micro_iou: {micro_iou}, macro_iou: {macro_iou}")
 
-    def predict(self, load_model, feature, text, repredict=False):
-        if repredict:
-            self.cross_attention_edit.clear_all()
-        seed_torch(self.cross_attention_edit.seed)
+    def predict_load(self, load_model):
         self.load(load_model)
         self.ema.copy_params_from_model_to_ema()
         self.ema.ema_model.eval()
+
+    def predict(self, feature, text, repredict=False):
+        if repredict:
+            self.cross_attention_edit.clear_all()
+        seed_torch(self.cross_attention_edit.seed)
+        # self.load(load_model)
+        # self.ema.copy_params_from_model_to_ema()
+        # self.ema.ema_model.eval()
         nodes = get_nodes(text)
         graph = get_dgl(nodes)
         attn_mask, node_feat, in_degree, out_degree, path_data, dist = collate([graph])

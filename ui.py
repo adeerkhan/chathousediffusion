@@ -2,15 +2,18 @@ import tkinter as tk
 import math
 from tkinter import Button, Text, Frame, Label
 from PIL import Image, ImageDraw, ImageTk
-from predict import predict
+from predict import predict_prepare
 from functools import partial
 from prompt2json import prompt2json, updatePrompt
 from openai import OpenAI
+import json
+
+api_info=json.load(open("api_info.json"))
 
 client = OpenAI(
     # 此处请替换自己的api
-    api_key="sk-0yRuXHOELeuX5HRd8CY6d5OjTxxApeamcxpHXPGf3FoK1dF9",
-    base_url="https://api.moonshot.cn/v1",
+    api_key=api_info["api_key"],
+    base_url=api_info["base_url"],
 )
 
 
@@ -85,6 +88,8 @@ class DrawingApp:
 
         self.text_history = []
         self.binary_image = None
+
+        self.trainer=predict_prepare()
 
     def toggle_draw_mode(self):
         self.drawing_enabled = not self.drawing_enabled
@@ -218,18 +223,18 @@ class DrawingApp:
             self.text_history = []
         else:
             if self.generate_button.cget("text") == "Generate":
-                new_text, mid = prompt2json(text, client=client, model="moonshot-v1-8k")
+                new_text, mid = prompt2json(text, client=client, model=api_info["model"])
             elif self.generate_button.cget("text") == "Edit":
                 new_text, mid = updatePrompt(
                     original_json_str=self.mid,
                     new_description=text,
                     client=client,
-                    model="moonshot-v1-8k",
+                    model=api_info["model"],
                 )
-            self.text_history.append(new_text)
             self.mid=mid
+        self.text_history.append(new_text)
         ##############################
-        prediction = predict(mask, new_text, repredict=repredict)
+        prediction = self.trainer.predict(mask, new_text, repredict=repredict)
         self.canvas.delete("all")
         self.lines = []
         self.text_input.delete(1.0, tk.END)

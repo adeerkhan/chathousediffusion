@@ -1,5 +1,9 @@
 # Generation results
 results/
+drawing*
+
+# api info
+api_info*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

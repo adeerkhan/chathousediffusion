@@ -19,11 +19,22 @@ if __name__ == "__main__":
 
     diffusion = GaussianDiffusion(model, **params["diffusion_dict"])
 
+    # trainer = Trainer(
+    #     diffusion,
+    #     "../chat_test_data/0605/image",
+    #     "../chat_test_data/0605/mask",
+    #     "../chat_test_data/0605/text",
+    #     **params["trainer_dict"],
+    #     results_folder=results_folder,
+    #     train_num_workers=train_num_workers,
+    #     mode="val",
+    # )
+
     trainer = Trainer(
         diffusion,
-        "../chat_test_data/0605/image",
-        "../chat_test_data/0605/mask",
-        "../chat_test_data/0605/text",
+        "../chathousediffusion/data/0531/image",
+        "../chathousediffusion/data/0531/mask",
+        "../chathousediffusion/data/0531/text",
         **params["trainer_dict"],
         results_folder=results_folder,
         train_num_workers=train_num_workers,
@@ -32,7 +43,7 @@ if __name__ == "__main__":
 
 
     seed_torch()
-    trainer.val(load_model=59)
+    trainer.val(load_model=98)
 
     # index = 37
     # mask_path = f"../chathousediffusion/data/0531/mask_test/{index}.png"

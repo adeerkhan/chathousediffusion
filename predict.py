@@ -2,7 +2,7 @@ from denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
 import os
 import pickle
 
-def predict(mask,text,repredict=False):
+def predict_prepare():
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     results_folder = "./results/text21"
     train_num_workers = 0
@@ -26,5 +26,5 @@ def predict(mask,text,repredict=False):
         inject_step=48
     )
 
-    image = trainer.predict(60, mask, text, repredict)
-    return image
+    trainer.predict_load(97)
+    return trainer
