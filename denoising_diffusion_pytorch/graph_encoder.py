@@ -6,12 +6,13 @@ import json
 import torch
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
-from .t5 import t5_encode_text, get_encoded_dim, DEFAULT_T5_NAME
+from .t5 import t5_encode_text
 import random
 import pickle
 import os
 import numpy as np
 
+ENCODED_DIM=768
 MAX_NUM_NODES=10
 
 
@@ -252,7 +253,7 @@ def collate(graphs, multi_hop_max_dist=4, max_degree=4):
         # A binary mask where invalid positions are indicated by True.
         attn_mask[i, :, num_nodes[i] + 1 :] = 1
         if num_nodes[i]==0:
-            node_feat_i=torch.zeros(1, get_encoded_dim(DEFAULT_T5_NAME)*3)
+            node_feat_i=torch.zeros(1, ENCODED_DIM*3)
             node_feat.append(node_feat_i)
             in_degree.append(torch.zeros(1,dtype=torch.long))
             out_degree.append(torch.zeros(1,dtype=torch.long))

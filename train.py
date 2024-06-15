@@ -5,7 +5,7 @@ import pickle
 
 if __name__ == "__main__":
     seed_torch()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     onehot = False
     if onehot:
         channels = 18

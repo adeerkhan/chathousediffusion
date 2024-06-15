@@ -29,8 +29,8 @@ def get_tokenizer(name):
     return tokenizer
 
 def get_model(name):
-    # model = T5EncoderModel.from_pretrained(name)
-    model = T5EncoderModel.from_pretrained("D:/qsz/t5-v1_1-base")
+    model = T5EncoderModel.from_pretrained(name)
+    # model = T5EncoderModel.from_pretrained("D:/qsz/t5-v1_1-base")
     return model
 
 def get_model_and_tokenizer(name):

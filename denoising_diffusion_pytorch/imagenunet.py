@@ -9,7 +9,6 @@ from pathlib import Path
 from .cross_attention_edit import AttentionEdit
 from typing import Optional
 
-from .t5 import get_encoded_dim, DEFAULT_T5_NAME
 from .utils import (
     exists,
     default,
@@ -23,9 +22,10 @@ from .utils import (
     print_once,
 )
 from .graphormer import Graphormer
-from .graph_encoder import MAX_NUM_NODES
+from .graph_encoder import MAX_NUM_NODES, ENCODED_DIM
 
 # norms and residuals
+
 
 
 class LayerNorm(nn.Module):
@@ -865,7 +865,7 @@ class Unet(nn.Module):
         self,
         *,
         dim,
-        text_embed_dim=get_encoded_dim(DEFAULT_T5_NAME),
+        text_embed_dim=ENCODED_DIM,
         num_resnet_blocks=1,
         cond_dim=None,
         num_time_tokens=2,
