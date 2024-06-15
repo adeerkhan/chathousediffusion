@@ -39,7 +39,7 @@ the model and parameters can be downloaded in <https://cloud.tsinghua.edu.cn/f/a
 
 The demo is shown following:
 
-![demo](demo.gif)
+<img src="demo.gif" width="50%" alt="demo image">
 
 ## Train and test
 
