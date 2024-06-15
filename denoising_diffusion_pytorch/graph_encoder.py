@@ -184,6 +184,8 @@ def get_dgl(node_list, mask=0):
                 ),
             },
         )
+    if len(node_list)>10:
+        print("too many nodes")
     for node in node_list:
         for j in node.link_ids:
             dgl_graph.add_edges(node.id, j)

@@ -48,7 +48,7 @@ class SizeType(Enum):
 class Room(BaseModel):
     name: str = Field(description="The name of the room. Ensure it is unique.")
     type: Optional[RoomType] = Field(description="The type of the room.")
-    link: list[Optional[str]] = Field(description="The names of the rooms this room is connected to.")
+    link: list[Optional[str]] = Field(description="The names of the rooms this room is connected to. Make sure two rooms are adjacent.")
     location: Optional[LocationType] = Field(description="The location of the room within the layout. Top represents the north, bottom represents the south.")
     size: Optional[SizeType] = Field(description="The size of the room, calculated as a proportion of the entire layout outline.")
 
@@ -82,7 +82,7 @@ class FloorPlan(BaseModel):
         ]
 
 extract_template = """\
-For the following text, identify and extract information about each room in the floor plan. Output using the following format:
+For the following text, identify and extract information about each room in the floor plan.
 
 text: {text}
 
@@ -92,7 +92,7 @@ Please provide the JSON content only.
 """
 
 update_template = """\
-Given the existing floor plan and the following additional description, update the floor plan accordingly. Output using the following format:
+Given the existing floor plan and the following additional description, update the floor plan accordingly.
 
 Existing floor plan:
 {floor_plan}

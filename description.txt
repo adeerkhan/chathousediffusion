@@ -1,7 +1,0 @@
-text2 初始json
-text3 数据集不对
-text4 没有加drop 0.1
-text5 加了drop0.1，数据集不对
-text6 修改dim batchsize，加 drop 0.1
-text7 graphormer
-text8 graphormer 2层

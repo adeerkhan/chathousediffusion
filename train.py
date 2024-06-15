@@ -77,7 +77,3 @@ if __name__ == "__main__":
         )
 
     trainer.train()
-    # for i in range(5):
-    #     seed_torch()
-    #     trainer.cond_scale=i
-    #     trainer.val(load_model=51)

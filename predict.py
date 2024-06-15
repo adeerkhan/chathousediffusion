@@ -4,7 +4,7 @@ import pickle
 
 def predict_prepare():
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    results_folder = "./results/text21"
+    results_folder = "./predict_model"
     train_num_workers = 0
     with open(os.path.join(results_folder, "params.pkl"), "rb") as f:
         params = pickle.load(f)
@@ -26,5 +26,5 @@ def predict_prepare():
         inject_step=48
     )
 
-    trainer.predict_load(97)
+    trainer.predict_load(98)
     return trainer

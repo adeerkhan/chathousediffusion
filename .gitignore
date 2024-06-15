@@ -1,6 +1,9 @@
 # Generation results
 results/
 drawing*
+*.rar
+*.pt
+*params.pkl
 
 # api info
 api_info*

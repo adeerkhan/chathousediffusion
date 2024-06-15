@@ -189,8 +189,6 @@ class DrawingApp:
 
         binary_image = binary_image.resize((64, 64), Image.Resampling.BOX)
         self.binary_image = binary_image
-        # resized_image.save("drawing.png")
-        # binary_image.save("drawing_gray.png")
 
     def exit_draw_mode(self, event=None):
         self.drawing_enabled = False
@@ -234,6 +232,7 @@ class DrawingApp:
             self.mid=mid
         self.text_history.append(new_text)
         ##############################
+        
         prediction = self.trainer.predict(mask, new_text, repredict=repredict)
         self.canvas.delete("all")
         self.lines = []

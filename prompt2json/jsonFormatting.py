@@ -147,6 +147,9 @@ def convert_json_string(input_json_string):
     # Convert the input JSON string to a Python dictionary
     input_json_string = convert_quotes(input_json_string)
     input_data = json.loads(input_json_string)
+
+    if input_data.get('properties'):
+        input_data = input_data['properties']
     
     # Check the format of the input JSON data
     if not check_json_format(input_data):
