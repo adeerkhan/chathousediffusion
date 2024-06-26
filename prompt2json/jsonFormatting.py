@@ -145,6 +145,7 @@ def convert_json_string(input_json_string):
     - str: Transformed JSON string matching the structure of JsonFormatExample.json.
     """
     # Convert the input JSON string to a Python dictionary
+    print(input_json_string)
     input_json_string = convert_quotes(input_json_string)
     input_data = json.loads(input_json_string)
 

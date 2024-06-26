@@ -23,7 +23,7 @@ def predict_prepare():
         results_folder=results_folder,
         train_num_workers=train_num_workers,
         mode="predict",
-        inject_step=48
+        inject_step=45
     )
 
     trainer.predict_load(98)

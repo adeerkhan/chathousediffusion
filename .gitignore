@@ -1,6 +1,8 @@
 # Generation results
 results/
 drawing*
+mask*
+new_text*
 *.rar
 *.pt
 *params.pkl

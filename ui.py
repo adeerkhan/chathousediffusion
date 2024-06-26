@@ -213,12 +213,16 @@ class DrawingApp:
         if self.binary_image is None:
             self.get_binary()
         mask = self.binary_image
+        # save mask
+        mask.save("mask.png")
 
         ## text generation ###########
         if len(text) < 10:
             new_text = self.text_history[-1]
         if repredict:
             self.text_history = []
+            if len(text) >= 10:
+                new_text, mid = prompt2json(text, client=client, model=api_info["model"])
         else:
             if self.generate_button.cget("text") == "Generate":
                 new_text, mid = prompt2json(text, client=client, model=api_info["model"])
@@ -230,6 +234,9 @@ class DrawingApp:
                     model=api_info["model"],
                 )
             self.mid=mid
+        # save new_text as json
+        with open("new_text.json", "w") as f:
+            f.write(new_text)
         self.text_history.append(new_text)
         ##############################
         
