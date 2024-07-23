@@ -114,53 +114,41 @@ prompt = PromptTemplate(
 )
 
 def extract_json_from_text(text):
-    # 找到第一个 '{' 作为 JSON 开始的标志
     start = text.find('{')
     if start == -1:
         return None
     
-    # 使用栈来跟踪大括号匹配
     stack = []
     for i in range(start, len(text)):
         if text[i] == '{':
             stack.append('{')
         elif text[i] == '}':
             stack.pop()
-            if not stack:  # 栈为空时，表示所有大括号都匹配完成
+            if not stack:
                 end = i
                 break
     else:
         return None
 
-    # 提取 JSON 文本
     json_text = text[start:end + 1]
     return json_text
 
 def clean_and_fix_json(json_text):
-    """
-    清理并修复包含无效JSON字符串。
-    包括去除注释、移除多余逗号和修复键值对格式。
-    """
-    # 去除注释的函数
     def remove_comments(json_string):
         pattern = r'//.*?(?=\n)|/\*.*?\*/'
         cleaned_string = re.sub(pattern, '', json_string, flags=re.DOTALL)
         return cleaned_string
 
-    # 移除最后一个元素后多余逗号的函数
     def remove_trailing_commas(json_string):
         cleaned_string = re.sub(r',(\s*[}\]])', r'\1', json_string)
         return cleaned_string
 
-    # 修复键值对格式的函数
     def fix_key_value_pairs(json_string):
-        # 修复location和size字段的值为键值对
         json_string = re.sub(r'"type":\s*"(.*?)"', r'"type": "\1"', json_string)
         json_string = re.sub(r'"location":\s*"(.*?)"', r'"location": "\1"', json_string)
         json_string = re.sub(r'"size":\s*"(.*?)"', r'"size": "\1"', json_string)
         return json_string
 
-    # 清理和修复JSON字符串
     cleaned_json_text = remove_comments(json_text)
     cleaned_json_text = remove_trailing_commas(cleaned_json_text)
     cleaned_json_text = fix_key_value_pairs(cleaned_json_text)
@@ -171,7 +159,6 @@ def extract_information(floor_plan_description, client = client, model="llama3:i
     
     formatted_prompt = prompt.format(text=floor_plan_description)
         
-    # 模拟 API 调用语言模型
     response = client.chat.completions.create(
         model = model,
         messages = [{"role": "user", "content": formatted_prompt}]
@@ -179,20 +166,12 @@ def extract_information(floor_plan_description, client = client, model="llama3:i
     res = response.choices[0].message.content
             
     json_text = extract_json_from_text(res)
-    # 清理和修复 JSON 字符串
     json_text = clean_and_fix_json(json_text)
                 
-    # 解析清理后的 JSON 字符串
     parsed_json = parser.parse(json_text)
     return str(parsed_json)
 
 def update_floor_plan_with_new_description(original_json_str, new_description, client=client, model="llama3:instruct"):
-    """
-    根据原始的 JSON 字符串和新的用户描述，更新并生成新的 JSON。
-    使用 langchain_core 的 PromptTemplate 来构建新的 prompt。
-    """
-
-    # 构建新的 PromptTemplate 使用更新的模板
     new_prompt = PromptTemplate(
         template=update_template,
         input_variables=["floor_plan", "text"],
@@ -202,7 +181,6 @@ def update_floor_plan_with_new_description(original_json_str, new_description, c
 
     formatted_prompt = new_prompt.format(floor_plan=original_json_str, text=new_description)
         
-    # 模拟 API 调用语言模型
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": formatted_prompt}]
@@ -211,9 +189,7 @@ def update_floor_plan_with_new_description(original_json_str, new_description, c
     res = response.choices[0].message.content
             
     json_text = extract_json_from_text(res)
-    # 清理和修复 JSON 字符串
     json_text = clean_and_fix_json(json_text)
                 
-    # 解析清理后的 JSON 字符串
     updated_floor_plan = parser.parse(json_text)
     return str(updated_floor_plan)
