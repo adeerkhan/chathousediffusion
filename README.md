@@ -60,5 +60,13 @@ The specific method can be found in our paper.
 Please cite this paper if you use the code.
 
 ```bib
-To be done
+@misc{qin2024chathousediffusionpromptguidedgenerationediting,
+      title={ChatHouseDiffusion: Prompt-Guided Generation and Editing of Floor Plans}, 
+      author={Sizhong Qin and Chengyu He and Qiaoyun Chen and Sen Yang and Wenjie Liao and Yi Gu and Xinzheng Lu},
+      year={2024},
+      eprint={2410.11908},
+      archivePrefix={arXiv},
+      primaryClass={cs.HC},
+      url={https://arxiv.org/abs/2410.11908}, 
+}
 ```
