@@ -4,7 +4,6 @@ import re
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
-# 定义概率
 probabilities = {
     "ChildRoom": 0.032,
     "StudyRoom": 0.125,
@@ -13,10 +12,8 @@ probabilities = {
 }
 
 class FormatErrorException(Exception):
-    """自定义异常类，用于匹配失败时抛出"""
     pass
 
-# 根据概率选择新类型
 def choose_new_type():
     return random.choices(list(probabilities.keys()), list(probabilities.values()))[0]
 
@@ -24,46 +21,35 @@ def convert_quotes(json_string):
     return json_string.replace("'", '"')
 
 def normalize_string(s):
-    # 将字符串转换为小写并去除空格和其他符号
     normalized = re.sub(r'\W+', '', s).lower()
-    # 如果处理后字符串为空，返回原始字符串
     return normalized if normalized else s
 
 def find_and_replace(target, string_list):
-    # 检查 target 是否是字符串，如果不是，则转换为字符串
     if not isinstance(target, str):
         target = str(target)
     
-    # 预处理目标字符串
     normalized_target = normalize_string(target)
     
-    # 按长度从长到短排序列表中的字符串
     sorted_string_list = sorted(string_list, key=lambda x: len(normalize_string(x)), reverse=True)
-    
-    # 遍历排序后的列表并进行预处理和比较
+
     for item in sorted_string_list:
         normalized_item = normalize_string(item)
         if normalized_item in normalized_target:
-            # 如果找到匹配项，返回 True 并修改目标字符串
             target = item
             return True, target
     
-    # 如果没有找到匹配项，返回 False 和原始目标字符串
     return False, target
 
 def get_best_match(target, string_list, threshold=60):
 
-    # 预处理查询字符串和候选字符串
     preprocessed_target = normalize_string(target)
 
     if not preprocessed_target.strip():
-        return False, "Unknown"  # 如果处理后字符串为空，直接返回未找到匹配
+        return False, "Unknown" 
     
     preprocessed_choices = [normalize_string(choice) for choice in string_list]
-    # 使用FuzzyWuzzy进行匹配，提取最佳匹配结果
     best_match = process.extractOne(preprocessed_target, preprocessed_choices, scorer=fuzz.token_set_ratio)
     
-    # 检查匹配度是否超过阈值
     if best_match[1] >= threshold:
         return True, string_list[preprocessed_choices.index(best_match[0])]
     else:

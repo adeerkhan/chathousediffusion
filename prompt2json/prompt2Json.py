@@ -6,16 +6,12 @@ import os
 from datetime import datetime
 
 def save_string_to_file(string, folder_path):
-    # 确保文件夹存在
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    # 获取当前时间并格式化为文件名
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     file_name = f"{timestamp}.txt"
     file_path = os.path.join(folder_path, file_name)
-
-    # 将字符串写入文件
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(string)
 

@@ -205,27 +205,6 @@ def get_dgl(node_list, mask=0):
     # dgl_graph.remove_nodes(erase_list)
     return dgl_graph
 
-
-# def info_of_graphormer(dgl_graph: DGLGraph, multi_hop_max_dist=8):
-#     node_feat = torch.cat(
-#         [
-#             dgl_graph.ndata["category"],
-#             dgl_graph.ndata["location"],
-#             dgl_graph.ndata["size"],
-#         ],
-#         dim=-1,
-#     )
-#     in_degree = dgl_graph.in_degrees()
-#     out_degree = dgl_graph.out_degrees()
-#     dist, path = shortest_dist(dgl_graph, return_paths=True)
-#     edata = torch.cat(
-#         [torch.ones((dgl_graph.num_edges(), 1)), torch.zeros(1, 1)], dim=0
-#     )
-#     path_data = edata[path[:, :, :multi_hop_max_dist]]
-#     path_data=pad(path_data,(0,0,0,multi_hop_max_dist-path.shape[-1]))
-#     return node_feat, in_degree, out_degree, dist, path_data
-
-
 def collate(graphs, multi_hop_max_dist=4, max_degree=4):
     # To match Graphormer's input style, all graph features should be
     # padded to the same size. Keep in mind that different graphs may
