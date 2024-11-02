@@ -10,7 +10,7 @@ The training data can be downloaded in <https://www.dropbox.com/scl/fi/efe1190up
 
 ## Quick start
 
-We've implemented a ui for ChatHouseDiffusion and you can directly use it.
+We've implemented a UI for ChatHouseDiffusion and you can use it directly. (This environment has been tested and works on Windows 10 with Python 3.10)
 
 1. Install relative packages.
 
