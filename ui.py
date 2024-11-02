@@ -217,11 +217,11 @@ class DrawingApp:
         mask.save("mask.png")
 
         ## text generation ###########
-        if len(text) < 10:
+        if len(text) < 5:
             new_text = self.text_history[-1]
         if repredict:
             self.text_history = []
-            if len(text) >= 10:
+            if len(text) >= 5:
                 new_text, mid = prompt2json(text, client=client, model=api_info["model"])
         else:
             if self.generate_button.cget("text") == "Generate":
