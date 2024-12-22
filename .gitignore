@@ -6,7 +6,7 @@ new_text*
 *.rar
 *.pt
 *params.pkl
-
+.api
 # api info
 api_info*
 

@@ -1,0 +1,112 @@
+{
+  "Entrance": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Hallway",
+        "link": [
+          [
+            "Master Bedroom",
+            "Second Bedroom",
+            "Living and Dining Area",
+            "Bathroom",
+            "Utility Room"
+          ]
+        ],
+        "location": "center",
+        "size": "M"
+      }
+    ]
+  },
+  "MasterRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Master Bedroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northwest",
+        "size": "L"
+      }
+    ]
+  },
+  "SecondRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Second Bedroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northeast",
+        "size": "M"
+      }
+    ]
+  },
+  "StudyRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Living and Dining Area",
+        "link": [
+          [
+            "Hallway",
+            "Balcony"
+          ]
+        ],
+        "location": "south",
+        "size": "XL"
+      }
+    ]
+  },
+  "Balcony": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Balcony",
+        "link": [
+          [
+            "Living and Dining Area"
+          ]
+        ],
+        "location": "south",
+        "size": "S"
+      }
+    ]
+  },
+  "Bathroom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Bathroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "center",
+        "size": "S"
+      }
+    ]
+  },
+  "Storage": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Utility Room",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "center",
+        "size": "S"
+      }
+    ]
+  }
+}

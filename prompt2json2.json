@@ -1,0 +1,362 @@
+Graph Representation Shape: torch.Size([1, 10, 64])
+Graph Representation Tensor: tensor([[[ 3.4044,  0.3298,  0.6032, -1.1091, -3.6602, -1.0650,  1.0865,
+           0.0913,  3.0059, -0.1457, -0.2570, -1.0085, -0.9135, -1.3193,
+           2.5564, -1.2966, -1.9296, -0.0074, -0.1831,  2.1376, -0.3159,
+          -0.6682, -1.2588, -3.7696,  1.7024,  0.7544, -2.8060, -2.8086,
+           0.6311,  1.7725,  2.5328, -1.7741, -2.6127, -1.7804, -0.9121,
+           0.4506,  0.0370, -2.5057, -0.3480, -0.6199, -0.8956,  1.7336,
+          -2.1079, -1.2015,  0.4658,  4.3201, -1.6057, -2.8332,  1.7232,
+           0.3302,  1.2800, -2.3150,  2.7930,  1.0025,  2.9898,  1.0964,
+           1.2654,  0.7148,  0.7227,  2.5575,  1.7299, -0.7399, -0.6310,
+           1.7579],
+         [ 2.5317,  1.1433, -0.1952, -0.9128, -2.7842, -0.6995,  1.1672,
+           0.9916,  2.8641, -2.0586,  0.5871, -0.4198,  0.5680, -0.0094,
+           1.7609, -0.1474, -1.8300, -0.1532, -0.2824,  2.0518, -0.7670,
+           0.0087, -1.5556, -3.7844,  1.2432, -0.1551, -3.0507, -2.9817,
+           0.7227,  1.3467,  2.1380, -1.5925, -1.3547, -1.7174, -0.7014,
+           1.1445, -0.1043, -2.6057, -0.5321,  0.2300, -0.4204,  1.5797,
+          -1.5393, -0.3999,  1.2769,  2.7571, -0.7396, -0.7099,  2.1840,
+          -0.2429,  0.7209, -3.0560,  0.9558,  1.0747,  2.5125,  1.1562,
+           1.7208, -0.5650,  1.4442,  1.1194,  0.1727, -1.1694, -1.7465,
+           1.5208],
+         [ 1.3513,  4.6318, -1.2862,  1.2052, -0.8224,  1.7478,  0.1035,
+          -1.2653,  2.4319, -0.4767, -0.0710,  0.4147,  0.5598, -0.6668,
+          -2.1832,  0.1582, -3.2519, -0.9294, -3.7240,  1.9614, -1.8043,
+          -1.8296,  0.3249, -2.6450,  1.2688, -1.2104, -1.9362, -0.8952,
+...
+           1.4008, -0.4191,  0.3556,  1.1746, -2.7606, -0.2111, -1.9162,
+           0.5927, -0.7213,  0.1535, -0.7787, -2.6276,  1.8869,  1.9108,
+           1.2603,  2.0990,  0.4239,  1.4200, -1.1377, -0.8792, -0.8839,
+           1.6765]]], device='cuda:0', grad_fn=<SliceBackward0>)
+Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
+Node Attributes:
+Name: Balcony, Category: Balcony, Location: north, Size: XS, Links: ['Living Room', 'Common Room 1'], ID: 0
+Name: Bathroom 1, Category: Bathroom, Location: east, Size: XS, Links: ['Living Room'], ID: 1
+Name: Bathroom 2, Category: Bathroom, Location: west, Size: S, Links: ['Master Bedroom', 'Common Room 2'], ID: 2
+Name: Common Room 1, Category: SecondRoom, Location: northeast, Size: M, Links: ['Balcony'], ID: 3
+Name: Common Room 2, Category: SecondRoom, Location: northwest, Size: M, Links: ['Kitchen', 'Living Room', 'Bathroom 2'], ID: 4
+Name: Kitchen, Category: Kitchen, Location: north, Size: S, Links: ['Living Room', 'Common Room 2'], ID: 5
+Name: Living Room, Category: LivingRoom, Location: southeast, Size: XL, Links: ['Balcony', 'Bathroom 1', 'Common Room 2', 'Kitchen', 'Master Bedroom', 'Dining Room'], ID: 6
+Name: Master Bedroom, Category: MasterRoom, Location: southwest, Size: L, Links: ['Living Room', 'Bathroom 2'], ID: 7
+Name: Dining Room, Category: DiningRoom, Location: center, Size: M, Links: ['Living Room'], ID: 8
+Node Attributes with Tokenized:
+Name: Balcony
+  - Category: Balcony, Embedding: [ 1.92807153e-01 -2.45839760e-01 -5.89259267e-01 -4.14612144e-01
+  1.17281266e-01  8.54795277e-02  2.41720051e-01 -5.49404204e-01
+  4.62871403e-01 -3.51337552e-01 -8.08348507e-02 -7.54038915e-02
+  6.16381705e-01 -5.86628914e-01  4.54113722e-01 -4.57672060e-01
+  1.48881711e-02 -3.60065013e-01  3.67552698e-01  1.70758754e-01
+ -7.35279083e-01  2.46819735e-01  1.95648968e-02  2.95306891e-01
+  2.63703108e-01  3.43237817e-01 -4.78711277e-01  2.56895810e-01
+ -8.39506984e-02 -3.36840063e-01  1.51970714e-01  4.27139789e-01
+ -2.98699200e-01 -7.30602145e-02 -6.49701715e-01  4.98008072e-01
+ -3.92041057e-01 -2.29364723e-01  3.99100453e-01 -5.54097444e-02
+ -3.13026682e-02 -3.66107166e-01 -4.04588073e-01  4.64209139e-01
+  2.08592996e-01 -6.21954322e-01 -5.13339043e-01 -4.48124148e-02
+ -1.58151329e-01  3.91650975e-01  3.27663392e-01  3.42638940e-01
+  1.19361378e-01  3.65692466e-01  3.88505310e-01 -4.94158387e-01
+ -3.12172383e-01 -4.32400703e-01  1.84014529e-01  1.57437310e-01
+  4.43304539e-01 -1.12898782e-01  1.03384686e+00 -2.04255596e-01
+ -7.03212857e-01 -9.84884128e-02 -3.47583830e-01  1.64040938e-01
+  4.54775542e-02  3.27379405e-01 -7.03826845e-02 -4.89145726e-01
+ -1.05302900e-01 -6.86880708e-01 -1.24169484e-01 -7.97321320e-01
+  1.90758258e-01 -3.10487300e-02 -4.28616017e-01  1.54575333e-02
+ -3.95069301e-01  2.53633440e-01 -2.77902693e-01 -4.63556021e-01
+  3.91347766e-01 -9.52882916e-02  6.47428334e-01 -2.41460741e-01
+ -7.14111142e-03 -1.26600206e+00  1.88156530e-01  3.12770084e-02
+...
+  2.07807034e-01  7.25820335e-03 -1.97062686e-01  4.01990786e-02
+ -6.31261095e-02  1.33502157e-02 -5.82867488e-03  1.68035105e-02]
+  - Links: ['Living Room'], ID: 8
+
+Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
+
+Output of Collate:
+
+Attention Mask (attn_mask):
+tensor([[[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.],
+         [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.]]])
+Shape: torch.Size([1, 11, 11])
+
+Node Features (node_feat):
+tensor([[[ 0.1928, -0.2458, -0.5893,  ..., -0.0091, -0.3679, -0.2132],
+         [ 0.0454,  0.2378,  0.0498,  ..., -0.0091, -0.3679, -0.2132],
+         [ 0.0454,  0.2378,  0.0498,  ..., -0.0881, -0.0915, -0.0280],
+         ...,
+         [ 0.0168, -0.1207, -0.0375,  ...,  0.0342,  0.0153,  0.1622],
+         [ 0.4547, -0.1293, -0.4530,  ..., -0.4424,  0.6713,  0.2250],
+         [ 0.0000,  0.0000,  0.0000,  ...,  0.0000,  0.0000,  0.0000]]])
+Shape: torch.Size([1, 10, 2304])
+...
+         [ 2,  2,  1, -1,  2,  2,  1,  0,  2, -1],
+         [ 2,  2,  3, -1,  2,  2,  1,  2,  0, -1],
+         [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]]])
+Shape: torch.Size([1, 10, 10])
+Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
+DGL num_nodes: tensor([[[ 0.1928, -0.2458, -0.5893,  ..., -0.0091, -0.3679, -0.2132],
+         [ 0.0454,  0.2378,  0.0498,  ..., -0.0091, -0.3679, -0.2132],
+         [ 0.0454,  0.2378,  0.0498,  ..., -0.0881, -0.0915, -0.0280],
+         ...,
+         [ 0.0168, -0.1207, -0.0375,  ...,  0.0342,  0.0153,  0.1622],
+         [ 0.4547, -0.1293, -0.4530,  ..., -0.4424,  0.6713,  0.2250],
+         [ 0.0000,  0.0000,  0.0000,  ...,  0.0000,  0.0000,  0.0000]]])
+DGL path_data: tensor([[[[[0.],
+           [0.],
+           [0.],
+           [0.]],
+
+          [[1.],
+           [1.],
+           [0.],
+           [0.]],
+
+          [[1.],
+           [1.],
+           [1.],
+           [0.]],
+
+          [[0.],
+           [0.],
+           [0.],
+...
+         [[0.],
+          [0.],
+          [0.],
+          [0.]]]])
+Output is truncated. View as a scrollable element or open in a text editor. Adjust cell output settings...
+{'rooms': [{'name': 'Hallway', 'type': 'Entrance', 'link': ['Living and Dining Area', 'Main Bedroom', 'Second Bedroom', 'Bathroom', 'Utility Room'], 'location': 'center', 'size': 'L'}, {'name': 'Main Bedroom', 'type': 'MasterRoom', 'link': ['Hallway'], 'location': 'northwest', 'size': 'L'}, {'name': 'Second Bedroom', 'type': 'ChildRoom', 'link': ['Hallway'], 'location': 'north', 'size': 'M'}, {'name': 'Living and Dining Area', 'type': 'LivingRoom', 'link': ['Hallway', 'Balcony'], 'location': 'south', 'size': 'XL'}, {'name': 'Balcony', 'type': 'Balcony', 'link': ['Living and Dining Area'], 'location': 'southeast', 'size': 'M'}, {'name': 'Bathroom', 'type': 'Bathroom', 'link': ['Hallway'], 'location': 'northeast', 'size': 'S'}, {'name': 'Utility Room', 'type': 'Storage', 'link': ['Hallway'], 'location': 'northeast', 'size': 'S'}]}
+Generated JSON: {
+  "Entrance": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Hallway",
+        "link": [
+          [
+            "Living and Dining Area",
+            "Main Bedroom",
+            "Second Bedroom",
+            "Bathroom",
+            "Utility Room"
+          ]
+        ],
+        "location": "center",
+        "size": "L"
+      }
+    ]
+  },
+  "MasterRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Main Bedroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northwest",
+        "size": "L"
+      }
+    ]
+  },
+  "ChildRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Second Bedroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "north",
+        "size": "M"
+      }
+    ]
+  },
+  "LivingRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Living and Dining Area",
+        "link": [
+          [
+            "Hallway",
+            "Balcony"
+          ]
+        ],
+        "location": "south",
+        "size": "XL"
+      }
+    ]
+  },
+  "Balcony": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Balcony",
+        "link": [
+          [
+            "Living and Dining Area"
+          ]
+        ],
+        "location": "southeast",
+        "size": "M"
+      }
+    ]
+  },
+  "Bathroom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Bathroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northeast",
+        "size": "S"
+      }
+    ]
+  },
+  "Storage": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Utility Room",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northeast",
+        "size": "S"
+      }
+    ]
+  }
+}
+MID: {'rooms': [{'name': 'Hallway', 'type': 'Entrance', 'link': ['Living and Dining Area', 'Main Bedroom', 'Second Bedroom', 'Bathroom', 'Utility Room'], 'location': 'center', 'size': 'L'}, {'name': 'Main Bedroom', 'type': 'MasterRoom', 'link': ['Hallway'], 'location': 'northwest', 'size': 'L'}, {'name': 'Second Bedroom', 'type': 'ChildRoom', 'link': ['Hallway'], 'location': 'north', 'size': 'M'}, {'name': 'Living and Dining Area', 'type': 'LivingRoom', 'link': ['Hallway', 'Balcony'], 'location': 'south', 'size': 'XL'}, {'name': 'Balcony', 'type': 'Balcony', 'link': ['Living and Dining Area'], 'location': 'southeast', 'size': 'M'}, {'name': 'Bathroom', 'type': 'Bathroom', 'link': ['Hallway'], 'location': 'northeast', 'size': 'S'}, {'name': 'Utility Room', 'type': 'Storage', 'link': ['Hallway'], 'location': 'northeast', 'size': 'S'}]}
+Generated JSON: {
+  "Entrance": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Hallway",
+        "link": [
+          [
+            "Living and Dining Area",
+            "Main Bedroom",
+            "Second Bedroom",
+            "Bathroom",
+            "Utility Room"
+          ]
+        ],
+        "location": "center",
+        "size": "L"
+      }
+    ]
+  },
+  "MasterRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Main Bedroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northwest",
+        "size": "L"
+      }
+    ]
+  },
+  "ChildRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Second Bedroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "north",
+        "size": "M"
+      }
+    ]
+  },
+  "LivingRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Living and Dining Area",
+        "link": [
+          [
+            "Hallway",
+            "Balcony"
+          ]
+        ],
+        "location": "south",
+        "size": "XL"
+      }
+    ]
+  },
+  "Balcony": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Balcony",
+        "link": [
+          [
+            "Living and Dining Area"
+          ]
+        ],
+        "location": "southeast",
+        "size": "M"
+      }
+    ]
+  },
+  "Bathroom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Bathroom",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northeast",
+        "size": "S"
+      }
+    ]
+  },
+  "Storage": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Utility Room",
+        "link": [
+          [
+            "Hallway"
+          ]
+        ],
+        "location": "northeast",
+        "size": "S"
+      }
+    ]
+  }
+}
+MID: {'rooms': [{'name': 'Hallway', 'type': 'Entrance', 'link': ['Living and Dining Area', 'Main Bedroom', 'Second Bedroom', 'Bathroom', 'Utility Room'], 'location': 'center', 'size': 'L'}, {'name': 'Main Bedroom', 'type': 'MasterRoom', 'link': ['Hallway'], 'location': 'northwest', 'size': 'L'}, {'name': 'Second Bedroom', 'type': 'ChildRoom', 'link': ['Hallway'], 'location': 'north', 'size': 'M'}, {'name': 'Living and Dining Area', 'type': 'LivingRoom', 'link': ['Hallway', 'Balcony'], 'location': 'south', 'size': 'XL'}, {'name': 'Balcony', 'type': 'Balcony', 'link': ['Living and Dining Area'], 'location': 'southeast', 'size': 'M'}, {'name': 'Bathroom', 'type': 'Bathroom', 'link': ['Hallway'], 'location': 'northeast', 'size': 'S'}, {'name': 'Utility Room', 'type': 'Storage', 'link': ['Hallway'], 'location': 'northeast', 'size': 'S'}]}

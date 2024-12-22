@@ -69,6 +69,20 @@ class Graphormer(nn.Module):
             ]
         )
 
+    def compute_shortest_dist_and_path(graph, multi_hop_max_dist):
+        dist_i = torch.full((graph.num_nodes, graph.num_nodes), float("inf"))
+        path = torch.full((graph.num_nodes, graph.num_nodes, multi_hop_max_dist), -1, dtype=torch.long)
+
+        nx_graph = to_networkx(graph, to_undirected=True)
+        for source in range(graph.num_nodes):
+            lengths = nx.single_source_shortest_path_length(nx_graph, source)
+            for target, length in lengths.items():
+                if source != target and length < multi_hop_max_dist:
+                    shortest_path = list(nx.shortest_path(nx_graph, source=source, target=target))
+                    path[source, target, :len(shortest_path)] = torch.tensor(shortest_path, dtype=torch.long)
+                    dist_i[source, target] = length
+        return dist_i, path
+
     def forward(
         self,
         node_feat,

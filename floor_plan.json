@@ -1,0 +1,138 @@
+{
+  "Balcony": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Balcony",
+        "link": [
+          [
+            "Living Room",
+            "Common Room 1"
+          ]
+        ],
+        "location": "north",
+        "size": "XS"
+      }
+    ]
+  },
+  "Bathroom": {
+    "num": 2,
+    "rooms": [
+      {
+        "name": "Bathroom 1",
+        "link": [
+          [
+            "Living Room"
+          ]
+        ],
+        "location": "east",
+        "size": "XS"
+      },
+      {
+        "name": "Bathroom 2",
+        "link": [
+          [
+            "Master Bedroom",
+            "Common Room 2"
+          ]
+        ],
+        "location": "west",
+        "size": "S"
+      }
+    ]
+  },
+  "SecondRoom": {
+    "num": 2,
+    "rooms": [
+      {
+        "name": "Common Room 1",
+        "link": [
+          [
+            "Balcony"
+          ]
+        ],
+        "location": "northeast",
+        "size": "M"
+      },
+      {
+        "name": "Common Room 2",
+        "link": [
+          [
+            "Kitchen",
+            "Living Room",
+            "Bathroom 2"
+          ]
+        ],
+        "location": "northwest",
+        "size": "M"
+      }
+    ]
+  },
+  "Kitchen": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Kitchen",
+        "link": [
+          [
+            "Living Room",
+            "Common Room 2"
+          ]
+        ],
+        "location": "north",
+        "size": "S"
+      }
+    ]
+  },
+  "LivingRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Living Room",
+        "link": [
+          [
+            "Balcony",
+            "Bathroom 1",
+            "Common Room 2",
+            "Kitchen",
+            "Master Bedroom",
+            "Dining Room"
+          ]
+        ],
+        "location": "southeast",
+        "size": "XL"
+      }
+    ]
+  },
+  "MasterRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Master Bedroom",
+        "link": [
+          [
+            "Living Room",
+            "Bathroom 2"
+          ]
+        ],
+        "location": "southwest",
+        "size": "L"
+      }
+    ]
+  },
+  "DiningRoom": {
+    "num": 1,
+    "rooms": [
+      {
+        "name": "Dining Room",
+        "link": [
+          [
+            "Living Room"
+          ]
+        ],
+        "location": "center",
+        "size": "M"
+      }
+    ]
+  }
+}

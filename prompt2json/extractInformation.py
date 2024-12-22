@@ -9,7 +9,7 @@ import uuid
 
 client = OpenAI(
     base_url ="http://localhost:11434/v1",
-    api_key='not-needed', 
+    api_key='-', 
 )
 
 class RoomType(Enum):
